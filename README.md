@@ -1,6 +1,6 @@
 # JeansFinder
 
-A personal tool that monitors Vinted for a specific style of jeans (dark/charcoal baggy denim), scores every listing using CLIP image embeddings plus colour analysis, and surfaces the best matches in a mobile-friendly feed that updates in real time.
+A personal tool that monitors Vinted for a specific style of jeans, scores every listing using CLIP image embeddings plus colour analysis, and surfaces the best matches in a mobile-friendly feed that updates in real time.
 
 Runs as two processes: a background scraper pipeline that polls Vinted every 15–25 minutes, and a Flask web UI you open on your phone over the same WiFi.
 
