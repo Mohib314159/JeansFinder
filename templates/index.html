@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>JeansFinder</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --a:#818cf8;--a15:color-mix(in srgb,var(--a) 15%,transparent);--a30:color-mix(in srgb,var(--a) 30%,transparent);
+  --bg:#080808;--bg2:#0f0f0f;--bg3:#161616;--bg4:#1e1e1e;--br:#202020;
+  --text:#e5e7eb;--muted:#6b7280;
+  --g:#16a34a;--r:#dc2626;--y:#f59e0b;--c:#06b6d4;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overscroll-behavior:none}
+
+/* HDR */
+.hdr{position:sticky;top:0;z-index:200;background:var(--bg2);padding:10px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;gap:8px}
+.logo{font-size:17px;font-weight:800;letter-spacing:-.5px;flex:1}.logo span{color:var(--a)}
+.hpill{background:var(--bg3);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--muted);white-space:nowrap}
+.hpill b{color:var(--text)}
+.ibtn{background:var(--bg3);border:1px solid var(--br);color:var(--muted);height:32px;padding:0 10px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap}
+.ibtn:active{background:var(--bg4)}
+.ibtn.urgent{color:var(--a);border-color:var(--a30)}
+.spin svg{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* STATUS BAR */
+.sbar{background:#090909;padding:5px 14px;font-size:10px;color:var(--muted);border-bottom:1px solid var(--br);display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;align-items:center}
+.sbar::-webkit-scrollbar{display:none}
+.si{white-space:nowrap;display:flex;align-items:center;gap:4px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.dot.ok{background:var(--g)}.dot.run{background:var(--a);animation:p 1s infinite}.dot.err{background:var(--r)}.dot.warn{background:var(--y)}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* TABS */
+.tabs{display:flex;background:#090909;border-bottom:1px solid var(--br);position:sticky;top:53px;z-index:199}
+.tab{flex:1;padding:9px 2px;text-align:center;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;transition:all .2s}
+.tab.on{color:var(--a);border-bottom-color:var(--a)}
+
+/* FILTERS */
+.fbar{display:flex;gap:5px;padding:7px 12px;overflow-x:auto;background:var(--bg);border-bottom:1px solid #141414;scrollbar-width:none}
+.fbar::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--br);background:var(--bg3);color:var(--muted);transition:all .15s}
+.chip.on{background:var(--a15);border-color:var(--a);color:var(--a)}
+.chip:active{transform:scale(.95)}
+
+/* FEED */
+.feed{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(min-width:500px){.feed{grid-template-columns:repeat(3,1fr)}}
+
+/* CARD */
+.card{background:var(--bg3);border-radius:14px;overflow:hidden;border:1px solid var(--br);position:relative}
+.card.liked{border-color:#16a34a55}
+.card.disliked{opacity:.18;pointer-events:none}
+.card.purchased{border-color:#f59e0b88}
+.isnew::before{content:'NEW';position:absolute;top:7px;left:7px;background:var(--a);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;z-index:5;letter-spacing:.4px}
+
+/* PHOTO */
+.ph-wrap{position:relative;overflow:hidden;cursor:pointer;background:var(--bg4)}
+.ph-wrap img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;transition:opacity .12s}
+.ph-dots{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);display:flex;gap:3px;pointer-events:none}
+.pd{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.3)}
+.pd.on{background:#fff}
+.ph-num{position:absolute;bottom:6px;right:7px;font-size:9px;font-weight:700;color:rgba(255,255,255,.7);background:rgba(0,0,0,.4);padding:1px 5px;border-radius:8px}
+
+/* CARD BODY */
+.cb{padding:7px 9px 9px}
+.stags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px}
+.st{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
+.stf{background:var(--a15);color:var(--a)}
+.stc{background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+.sth{background:color-mix(in srgb,var(--y) 15%,transparent);color:var(--y)}
+.stb{background:color-mix(in srgb,var(--g) 15%,transparent);color:var(--g);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd{display:none;font-size:9px;color:#3a3a3a;line-height:1.4;margin-bottom:4px;word-break:break-all}
+.exp .bd{display:block}
+.ct{font-size:11px;color:#aaa;line-height:1.3;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.cm{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.cp{font-size:14px;font-weight:800}
+.cs{font-size:10px;color:var(--muted);background:#222;padding:2px 5px;border-radius:4px}
+.acts{display:flex;gap:4px}
+.btn{flex:1;padding:6px 2px;border:none;border-radius:9px;font-size:12px;cursor:pointer;font-weight:700;transition:transform .1s}
+.btn:active{transform:scale(.92)}
+.bx{background:#dc262615;border:1px solid #dc262628;color:var(--r)}
+.bh{background:#16a34a15;border:1px solid #16a34a28;color:var(--g)}
+.bl{background:var(--a15);border:1px solid var(--a30);color:var(--a);text-decoration:none;display:flex;align-items:center;justify-content:center}
+.bf{background:color-mix(in srgb,var(--y) 12%,transparent);border:1px solid color-mix(in srgb,var(--y) 25%,transparent);color:var(--y);font-size:10px}
+
+/* LOAD MORE + EMPTY */
+.lmore{grid-column:span 2;text-align:center;padding:10px}
+.lmbtn{background:var(--bg3);border:1px solid var(--br);color:var(--muted);padding:10px 20px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:600}
+.lmbtn:active{background:var(--bg4)}
+.empty{grid-column:span 2;text-align:center;padding:50px 20px}
+.empty .ico{font-size:36px;margin-bottom:8px}
+.empty p{font-size:13px;color:#444;line-height:1.6}
+
+/* FOUND BANNER */
+.fbanner{grid-column:span 2;background:color-mix(in srgb,var(--y) 8%,var(--bg3));border:1px solid color-mix(in srgb,var(--y) 35%,transparent);border-radius:12px;padding:14px;text-align:center}
+.fbanner .ico{font-size:28px;margin-bottom:5px}
+.fbanner p{font-size:12px;color:var(--y);font-weight:600}
+
+/* LOG */
+.log-wrap{padding:10px;display:flex;flex-direction:column;gap:5px}
+.li{background:var(--bg3);border-radius:10px;padding:9px 12px;border:1px solid var(--br)}
+.lt{font-size:10px;color:var(--muted);margin-bottom:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ld{font-size:12px;color:#ccc}
+.ls{padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700}
+.ok{background:#16a34a18;color:var(--g)}.error{background:#dc262618;color:var(--r)}.no_results{background:#f59e0b18;color:var(--y)}
+
+/* PANEL */
+.panel{display:none;position:fixed;inset:0;background:#0b0b0b;z-index:300;flex-direction:column}
+.panel.open{display:flex}
+.phdr{padding:13px 16px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.phdr h2{font-size:16px;font-weight:700}
+.pbody{flex:1;overflow-y:auto;padding:12px 14px;-webkit-overflow-scrolling:touch}
+.sec{font-size:10px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:.8px;margin:16px 0 8px}
+.sec:first-child{margin-top:2px}
+
+.qi{display:flex;align-items:center;gap:7px;padding:9px 11px;background:var(--bg3);border-radius:10px;margin-bottom:5px;border:1px solid var(--br)}
+.qt{flex:1;font-size:12px;color:var(--text);min-width:0}
+.qh{font-size:9px;color:#333}
+.tog{width:38px;height:22px;background:#252525;border-radius:11px;border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.tog.on{background:var(--a)}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s}
+.tog.on::after{transform:translateX(16px)}
+.qdel{background:none;border:none;color:#2a2a2a;cursor:pointer;font-size:14px;padding:3px 5px}
+.qdel:active{color:var(--r)}
+
+.addrow{display:flex;gap:7px;margin-top:8px}
+.ainp{flex:1;background:#181818;border:1px solid var(--br);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;outline:none}
+.ainp:focus{border-color:var(--a)}
+.abtn{background:var(--a);border:none;color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+
+.srow{display:flex;align-items:center;padding:10px 12px;background:var(--bg3);border-radius:10px;margin-bottom:6px;border:1px solid var(--br);gap:8px}
+.slbl{font-size:13px;color:var(--text);flex:1;min-width:0}
+.slbl small{display:block;font-size:10px;color:var(--muted);margin-top:1px}
+.sv{font-size:13px;font-weight:700;color:var(--a);min-width:38px;text-align:right;flex-shrink:0}
+input[type=range]{width:75px;accent-color:var(--a);flex-shrink:0}
+
+.action-btn{width:100%;padding:12px;background:var(--bg3);border:1px solid var(--br);border-radius:10px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px;text-align:left}
+.action-btn:active{background:var(--bg4)}
+.action-btn.danger{color:var(--r);border-color:#dc262628}
+.action-btn.accent{color:var(--a);border-color:var(--a30)}
+
+.ri{display:flex;align-items:center;gap:8px;padding:6px 11px;background:var(--bg3);border-radius:8px;margin-bottom:4px;border:1px solid var(--br)}
+.ri img{width:32px;height:42px;object-fit:cover;border-radius:4px;background:#222}
+.rn{flex:1;font-size:10px;color:var(--muted);word-break:break-all}
+.rb{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;flex-shrink:0}
+.rpos{background:#16a34a18;color:var(--g)}.rneg{background:#dc262618;color:var(--r)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--a);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;transition:transform .25s;z-index:500;pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo">Jeans<span>Finder</span></div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <span class="hpill" id="hpill">—</span>
+    <button class="ibtn" id="sbtn" onclick="triggerScrape()">
+      <svg id="sico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>Now
+    </button>
+    <button class="ibtn" onclick="openPanel()">⚙</button>
+  </div>
+</div>
+
+<div class="sbar">
+  <div class="si"><div class="dot" id="sdot"></div><span id="stxt">Starting...</span></div>
+  <div class="si" id="si-last" style="display:none">Last: <b id="slast"></b></div>
+  <div class="si" id="si-next" style="display:none">Next: ~<b id="snext"></b></div>
+</div>
+
+<div class="tabs">
+  <button class="tab on"  onclick="switchTab('unseen',this)">Unseen</button>
+  <button class="tab"     onclick="switchTab('liked',this)">Liked ♥</button>
+  <button class="tab"     onclick="switchTab('all',this)">All</button>
+  <button class="tab"     onclick="switchTab('log',this)">Log</button>
+</div>
+
+<div class="fbar" id="fbar">
+  <div class="chip on" onclick="setSort('score',this)">Best</div>
+  <div class="chip"    onclick="setSort('newest',this)">New</div>
+  <div class="chip"    onclick="setSort('price_asc',this)">£↑</div>
+  <div class="chip on" data-s="0"  onclick="setScore(0,this)">All</div>
+  <div class="chip"    data-s="50" onclick="setScore(50,this)">50%+</div>
+  <div class="chip"    data-s="65" onclick="setScore(65,this)">65%+</div>
+  <div class="chip"    data-s="75" onclick="setScore(75,this)">75%+</div>
+</div>
+
+<div class="feed" id="feed">
+  <div class="empty"><div class="ico">⏳</div><p>Loading...</p></div>
+</div>
+
+<div class="panel" id="panel">
+  <div class="phdr">
+    <h2>Settings</h2>
+    <button class="ibtn" onclick="closePanel()">✕ Close</button>
+  </div>
+  <div class="pbody" id="pbody">Loading...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let TAB='unseen',SORT='score',MSCORE=0,PAGE=1,ITEMS=[],TOTAL=0;
+let photoIdxs={};
+let isScrolling=false,scrollT,refreshT;
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+async function loadListings(reset=true){
+  if(TAB==='log'){loadLog();return}
+  if(reset){PAGE=1;ITEMS=[]}
+  const r=await fetch(`/api/listings?show=${TAB}&sort=${SORT}&min_score=${MSCORE}&page=${PAGE}`).catch(()=>null)
+  if(!r){renderEmpty('Cannot connect. Is app.py running?');return}
+  const d=await r.json()
+  TOTAL=d.total;ITEMS=reset?d.items:[...ITEMS,...d.items]
+  renderFeed()
+}
+
+function renderFeed(){
+  const feed=document.getElementById('feed')
+  feed.style.cssText='padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px'
+  if(!ITEMS.length){renderEmpty('No matches yet — scraper will find some.');return}
+
+  const pur=ITEMS.filter(i=>i.purchased)
+  const banner=pur.length?`<div class="fbanner"><div class="ico">🎉</div><p>Found ${pur.length} item${pur.length>1?'s':''}!</p></div>`:''
+
+  const cards=ITEMS.map(l=>{
+    let photos=[]
+    try{photos=JSON.parse(l.all_photos||'[]')}catch{}
+    if(!photos.length&&l.image_url)photos=[l.image_url]
+    if(!photoIdxs[l.id])photoIdxs[l.id]=0
+
+    // Prefer local cached image for current index
+    const imgSrc=l.local_image&&photoIdxs[l.id]===0
+      ?`/static/images/${l.local_image}`
+      :(photos[photoIdxs[l.id]]||photos[0]||'')
+
+    const cls=l.purchased?'purchased':(l.feedback===1?'liked':l.feedback===-1?'disliked':'')
+    const newCls=l.is_new&&!l.purchased?' isnew':''
+
+    const dotsHtml=photos.length>1
+      ?`<div class="ph-dots">${photos.slice(0,6).map((_,i)=>`<div class="pd ${i===photoIdxs[l.id]?'on':''}" id="pd${l.id}_${i}"></div>`).join('')}</div>`
+      +`<div class="ph-num">${photoIdxs[l.id]+1}/${photos.length}</div>`
+      :''
+
+    const bd=(l.score_breakdown||'').replace(/\|/g,' · ').replace(/reject:/g,'❌').replace(/dist:/g,'📏').replace(/sim:/g,'🧠')
+
+    return `<div class="card ${cls}${newCls}" id="c${l.id}">
+      <div class="ph-wrap" onclick="cyclePhoto(${l.id},${JSON.stringify(photos).replace(/"/g,'&quot;')})">
+        <img id="img${l.id}" src="${imgSrc}" loading="lazy" onerror="this.style.minHeight='120px';this.src=''">
+        ${dotsHtml}
+      </div>
+      <div class="cb">
+        <div class="stags">
+          <span class="st stf">${l.final_score||0}%</span>
+          ${l.clip_score?`<span class="st stc">AI ${l.clip_score}%</span>`:''}
+          ${l.colour_score?`<span class="st sth">Col ${l.colour_score}%</span>`:''}
+          ${l.brand?`<span class="st stb" title="${l.brand}">${l.brand}</span>`:''}
+        </div>
+        <div class="bd" id="bd${l.id}">${bd}</div>
+        <div class="ct" onclick="document.getElementById('c${l.id}').classList.toggle('exp')">${l.title||'Jeans'}</div>
+        <div class="cm"><span class="cp">${l.price||'—'}</span><span class="cs">${l.size||'?'}</span></div>
+        <div class="acts">
+          ${l.purchased
+            ?`<span style="flex:1;text-align:center;font-size:10px;color:var(--y);font-weight:700">🎉 Found!</span>`
+            :`<button class="btn bx" onclick="vote(${l.id},-1)">✕</button>
+              <button class="btn bh" onclick="vote(${l.id},1)">♥</button>
+              <button class="btn bf" onclick="gotIt(${l.id})" title="Found it!">✓Got</button>
+              <a class="btn bl" href="${l.url}" target="_blank">↗</a>`}
+        </div>
+      </div>
+    </div>`
+  }).join('')
+
+  const more=ITEMS.length<TOTAL?`<div class="lmore"><button class="lmbtn" onclick="loadMore()">Load ${TOTAL-ITEMS.length} more</button></div>`:''
+  feed.innerHTML=banner+cards+more
+}
+
+function renderEmpty(msg){
+  document.getElementById('feed').innerHTML=`<div class="empty"><div class="ico">🔍</div><p>${msg}</p></div>`
+}
+
+function cyclePhoto(id,photos){
+  if(!photos||photos.length<2)return
+  photoIdxs[id]=(((photoIdxs[id]||0)+1)%photos.length)
+  const img=document.getElementById(`img${id}`)
+  if(img){img.style.opacity='0.5';img.src=photos[photoIdxs[id]];img.onload=()=>img.style.opacity='1'}
+  photos.slice(0,6).forEach((_,i)=>{
+    const d=document.getElementById(`pd${id}_${i}`)
+    if(d)d.classList.toggle('on',i===photoIdxs[id])
+  })
+  const num=document.querySelector(`#c${id} .ph-num`)
+  if(num)num.textContent=`${photoIdxs[id]+1}/${photos.length}`
+}
+
+async function loadMore(){PAGE++;await loadListings(false)}
+
+async function vote(id,v){
+  await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,vote:v})})
+  const c=document.getElementById(`c${id}`)
+  c?.classList.toggle('liked',v===1);c?.classList.toggle('disliked',v===-1)
+  const item=ITEMS.find(i=>i.id===id);if(item)item.feedback=v
+  toast(v===1?'♥ Liked — training detector':'✕ Dismissed')
+  loadStats()
+}
+
+async function gotIt(id){
+  await fetch('/api/purchased',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+  const item=ITEMS.find(i=>i.id===id);if(item){item.purchased=1;item.feedback=1}
+  renderFeed();toast('🎉 FOUND IT! Hunt successful!')
+}
+
+async function loadLog(){
+  const r=await fetch('/api/log');const rows=await r.json()
+  const feed=document.getElementById('feed')
+  feed.style.cssText='display:block;padding:0'
+  if(!rows.length){feed.innerHTML='<div class="empty"><div class="ico">📋</div><p>No runs yet.</p></div>';return}
+  feed.innerHTML=`<div class="log-wrap">${rows.map(r=>{
+    const sc=r.status==='ok'?'ok':r.status==='no_results'?'no_results':'error'
+    return`<div class="li"><div class="lt"><span class="ls ${sc}">${r.status}</span>${r.ran_at} · ${(r.duration_s||0).toFixed(0)}s${r.consecutive_zeros>0?` <span class="ls no_results">${r.consecutive_zeros}× 0</span>`:''}</div><div class="ld">Scraped <b>${r.listings_found}</b> · Saved <b>${r.listings_passed}</b></div></div>`
+  }).join('')}</div>`
+}
+
+// ── STATS ─────────────────────────────────────────────────────────────────────
+async function loadStats(){
+  const r=await fetch('/api/stats').catch(()=>null);if(!r)return
+  const s=await r.json()
+  document.getElementById('hpill').innerHTML=`<b>${s.unseen}</b> new · <b>${s.liked}</b> ♥${s.purchased?` · 🎉<b>${s.purchased}</b>`:''}`
+  const state=s.scraper_state||'unknown'
+  const alive=s.pipeline_alive
+  const dot=document.getElementById('sdot'),stxt=document.getElementById('stxt')
+  if(!alive&&!['session_expired','no_session'].includes(state)){
+    dot.className='dot warn';stxt.textContent='Pipeline not running — start pipeline.py'
+  } else {
+    dot.className='dot '+({running:'run',idle:'ok',ok:'ok',session_expired:'err',no_session:'err',error:'err'}[state]||'')
+    stxt.textContent={running:'Scraping now...',idle:'Idle',ok:'Idle',session_expired:'⚠ Session expired — re-run login',no_session:'⚠ No session — run login setup',error:'⚠ Error — check terminal'}[state]||state
+  }
+  document.getElementById('sbtn').classList.toggle('spin',state==='running')
+  if(s.last_run_end){
+    const ago=Math.round((Date.now()-new Date(s.last_run_end))/60000)
+    document.getElementById('slast').textContent=ago<60?`${ago}m ago`:`${Math.floor(ago/60)}h ago`
+    document.getElementById('si-last').style.display='flex'
+  }
+  if(s.next_run_ts){
+    const mins=Math.round((new Date(s.next_run_ts)-Date.now())/60000)
+    document.getElementById('snext').textContent=mins<=0?'soon':mins<60?`${mins}m`:s.next_run
+    document.getElementById('si-next').style.display='flex'
+  }
+}
+
+// ── CONTROLS ──────────────────────────────────────────────────────────────────
+function switchTab(t,el){
+  TAB=t
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));el.classList.add('on')
+  document.getElementById('fbar').style.display=t==='log'?'none':'flex'
+  document.getElementById('feed').style.cssText='padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px'
+  loadListings()
+}
+function setSort(s,el){
+  SORT=s
+  document.querySelectorAll('.chip').forEach(c=>{if(['Best','New','£↑'].some(x=>c.textContent===x))c.classList.remove('on')})
+  el.classList.add('on');loadListings()
+}
+function setScore(s,el){
+  MSCORE=s
+  document.querySelectorAll('.chip[data-s]').forEach(c=>c.classList.remove('on'))
+  el.classList.add('on');loadListings()
+}
+async function triggerScrape(){
+  document.getElementById('sbtn').classList.add('spin')
+  await fetch('/api/scrape/trigger',{method:'POST'})
+  toast('Scrape triggered — check back in a few mins')
+  setTimeout(()=>document.getElementById('sbtn').classList.remove('spin'),4000)
+}
+
+// ── PANEL ─────────────────────────────────────────────────────────────────────
+function openPanel(){document.getElementById('panel').classList.add('open');renderPanel()}
+function closePanel(){document.getElementById('panel').classList.remove('open');loadListings()}
+
+async function renderPanel(){
+  const [qr,sr,rr]=await Promise.all([fetch('/api/queries'),fetch('/api/settings'),fetch('/api/references')])
+  const Q=await qr.json(),S=await sr.json(),R=await rr.json()
+  document.getElementById('pbody').innerHTML=`
+
+    <div class="sec">Actions</div>
+    <button class="action-btn accent" onclick="triggerScrapePanel()">⟳ Scrape now</button>
+    <button class="action-btn" onclick="triggerRescore()">🔄 Rescore all with current refs</button>
+    <button class="action-btn danger" onclick="bulkDismiss()">🗑 Dismiss all unseen</button>
+
+    <div class="sec">Search Queries (${Q.filter(q=>q.enabled).length}/${Q.length})</div>
+    <div id="ql">${Q.map(q=>`
+      <div class="qi" id="qi${q.id}">
+        <div style="flex:1;min-width:0">
+          <div class="qt">${q.query}</div>
+          <div class="qh">${q.hits_passed||0} saved / ${q.hits_total||0} found${q.query_type==='brand'?' · brand':''}${!q.use_gender?' · no gender filter':''}</div>
+        </div>
+        <button class="tog ${q.enabled?'on':''}" onclick="toggleQ(${q.id},this)"></button>
+        <button class="qdel" onclick="deleteQ(${q.id})">🗑</button>
+      </div>`).join('')}</div>
+    <div class="addrow">
+      <input class="ainp" id="nq" placeholder="Add search term..." onkeydown="if(event.key==='Enter')addQ()">
+      <button class="abtn" onclick="addQ()">Add</button>
+    </div>
+
+    <div class="sec" style="margin-top:18px">Scoring</div>
+    <div class="srow"><div class="slbl">Match threshold<small>Min % to save</small></div>
+      <input type="range" min="20" max="85" value="${S.score_threshold||45}" oninput="this.nextElementSibling.textContent=this.value+'%';SS('score_threshold',this.value)">
+      <span class="sv">${S.score_threshold||45}%</span></div>
+    <div class="srow"><div class="slbl">AI weight<small>vs colour balance</small></div>
+      <input type="range" min="0" max="100" value="${Math.round((S.clip_weight||0.6)*100)}" oninput="const v=this.value;this.nextElementSibling.textContent=v+'%';SS('clip_weight',(v/100).toFixed(2));SS('colour_weight',((100-v)/100).toFixed(2))">
+      <span class="sv">${Math.round((S.clip_weight||0.6)*100)}%</span></div>
+    <div class="srow"><div class="slbl">Notify at<small>Instant alert threshold</small></div>
+      <input type="range" min="50" max="95" value="${S.notify_threshold||75}" oninput="this.nextElementSibling.textContent=this.value+'%';SS('notify_threshold',this.value)">
+      <span class="sv">${S.notify_threshold||75}%</span></div>
+
+    <div class="sec">Timing</div>
+    <div class="srow"><div class="slbl">Min interval</div>
+      <input type="range" min="15" max="120" step="5" value="${S.interval_min||45}" oninput="this.nextElementSibling.textContent=this.value+'m';SS('interval_min',this.value)">
+      <span class="sv">${S.interval_min||45}m</span></div>
+    <div class="srow"><div class="slbl">Max interval</div>
+      <input type="range" min="30" max="240" step="5" value="${S.interval_max||90}" oninput="this.nextElementSibling.textContent=this.value+'m';SS('interval_max',this.value)">
+      <span class="sv">${S.interval_max||90}m</span></div>
+    <div class="srow"><div class="slbl">Auto-archive after<small>Days unseen items stay</small></div>
+      <input type="range" min="3" max="60" value="${S.archive_after_days||14}" oninput="this.nextElementSibling.textContent=this.value+'d';SS('archive_after_days',this.value)">
+      <span class="sv">${S.archive_after_days||14}d</span></div>
+
+    <div class="sec">Filters</div>
+    <div class="srow" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div class="slbl">Size filter<small>Comma-separated, blank = all sizes</small></div>
+      <input class="ainp" style="width:100%" id="szinp" value="${JSON.parse(S.size_filter||'[]').join(', ')}"
+        onchange="SS('size_filter',JSON.stringify(this.value.split(',').map(s=>s.trim()).filter(Boolean)))"></div>
+    <div class="srow"><div class="slbl">Score all listing photos<small>Slower but finds best angle</small></div>
+      <button class="tog ${(S.multi_photo_score||'true')==='true'?'on':''}" onclick="const on=this.classList.toggle('on');SS('multi_photo_score',on?'true':'false')"></button></div>
+    <div class="srow"><div class="slbl">Use real Chrome<small>Better Cloudflare bypass</small></div>
+      <button class="tog ${(S.use_real_chrome||'true')==='true'?'on':''}" onclick="const on=this.classList.toggle('on');SS('use_real_chrome',on?'true':'false')"></button></div>
+
+    <div class="sec">Reference Images (${R.length})</div>
+    ${R.map(r=>`<div class="ri">
+      <img src="/ref_img/${encodeURIComponent(r.name)}" onerror="this.style.display='none'">
+      <span class="rn">${r.name.replace('feedback_like_','👍 ').replace('feedback_dislike_','👎 ')}</span>
+      <span class="rb ${r.is_negative?'rneg':'rpos'}">${r.is_negative?'NEG':'POS'}</span>
+    </div>`).join('')}
+    <p style="font-size:10px;color:#333;margin-top:8px;line-height:1.5">Drop images into <code>reference_images/</code> folder to add more.</p>
+  `
+}
+
+async function toggleQ(id,btn){const on=btn.classList.toggle('on');await fetch('/api/queries/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,enabled:on?1:0})})}
+async function deleteQ(id){await fetch('/api/queries/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});document.getElementById(`qi${id}`)?.remove();toast('Deleted')}
+async function addQ(){const inp=document.getElementById('nq');const q=inp.value.trim();if(!q)return;const r=await fetch('/api/queries/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});const d=await r.json();if(d.ok){inp.value='';toast(`Added: "${q}"`);renderPanel()}else toast('Already exists')}
+async function SS(k,v){await fetch('/api/settings/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v})})}
+async function triggerScrapePanel(){await fetch('/api/scrape/trigger',{method:'POST'});toast('Scrape triggered!')}
+async function triggerRescore(){await fetch('/api/rescore/trigger',{method:'POST'});toast('Rescore triggered — runs after next scrape')}
+async function bulkDismiss(){
+  if(!confirm('Dismiss ALL unseen listings? This cannot be undone.'))return
+  const r=await fetch('/api/bulk_dismiss',{method:'POST'});const d=await r.json()
+  toast(`Dismissed ${d.dismissed} listings`);loadListings()
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let tt;
+function toast(m){clearTimeout(tt);const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');tt=setTimeout(()=>t.classList.remove('show'),2500)}
+
+// ── SCROLL-AWARE REFRESH ──────────────────────────────────────────────────────
+window.addEventListener('scroll',()=>{isScrolling=true;clearTimeout(scrollT);scrollT=setTimeout(()=>isScrolling=false,2000)},{passive:true})
+function scheduleRefresh(){clearTimeout(refreshT);refreshT=setTimeout(()=>{if(!isScrolling)loadListings();scheduleRefresh()},5*60*1000)}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadListings();loadStats()
+setInterval(loadStats,30*1000)
+scheduleRefresh()
+</script>
+</body>
+</html>

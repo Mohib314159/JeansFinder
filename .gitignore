@@ -1,0 +1,23 @@
+# Runtime data — personal, never commit
+data/
+logs/
+static/images/
+reference_images/*
+!reference_images/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Caches / models
+*.pkl
+*.db
+*.db-wal
+*.db-shm
+
+# OS
+.DS_Store
+Thumbs.db
