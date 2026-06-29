@@ -1,7 +1,7 @@
 flask>=3.0
+httpx>=0.28
 requests>=2.31
 pillow>=10.0
 numpy>=1.26
-playwright>=1.44
 sentence-transformers>=3.0
 plyer>=2.1

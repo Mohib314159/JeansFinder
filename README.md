@@ -1,128 +1,68 @@
 # JeansFinder
 
-A personal tool that monitors Vinted for dark/charcoal baggy jeans, scores each listing using CLIP embeddings + colour analysis, and surfaces the best matches in a mobile-friendly feed.
+A personal tool that monitors Vinted for a specific style of jeans (dark/charcoal baggy denim), scores every listing using CLIP image embeddings plus colour analysis, and surfaces the best matches in a mobile-friendly feed that updates in real time.
 
-Runs as two processes: a background scraper pipeline that checks Vinted every 45–90 minutes, and a Flask web UI you can open on your phone while on the same WiFi.
+Runs as two processes: a background scraper pipeline that polls Vinted every 15–25 minutes, and a Flask web UI you open on your phone over the same WiFi.
 
-![score flow](https://img.shields.io/badge/scoring-CLIP_%2B_colour-blue) ![python](https://img.shields.io/badge/python-3.11%2B-green) ![platform](https://img.shields.io/badge/platform-Windows-lightgrey)
+![scoring](https://img.shields.io/badge/scoring-CLIP_%2B_colour-blue) ![python](https://img.shields.io/badge/python-3.8%2B-green)
 
 ---
 
 ## How it works
 
-1. **Scraper** (`scraper.py`) — uses Playwright with real Chrome (non-headless, moved off-screen) to intercept Vinted's internal `/api/v2/catalog/items` API responses. Runs multiple search queries, deduplicates results, and saves a session cookie for subsequent runs.
+**1. Scraper (`scraper.py`)** — a custom Vinted API client built with `httpx`. It fetches a session cookie from the Vinted homepage, then queries the internal `/api/v2/catalog/items` JSON endpoint directly — the same endpoint Vinted's own frontend uses. No browser, no HTML parsing, so it's fast and resilient to layout changes. Each query pulls multiple pages across two sort orders (newest + relevance) for coverage, and the cookie auto-refreshes if it expires mid-run.
 
-2. **Scorer** (`scorer.py`) — dual signal:
-   - **CLIP** (`clip-ViT-B-32` via sentence-transformers): compares each listing image against a set of positive/negative reference images using cosine similarity. Calibrates score thresholds automatically once you have 4+ references.
-   - **Colour**: extracts pixels from a tight centre crop (avoids white backgrounds and phone borders), rejects hard mismatches (vivid blue denim, pure black, beige, etc.), then scores distance to a target colour computed from your references.
-   - Final score: `0.6 × CLIP + 0.4 × colour` by default (adjustable in settings).
+**2. Scorer (`scorer.py`)** — two complementary signals:
+- **Colour pre-filter** — extracts denim pixels from a tight centre crop (ignoring white backgrounds), hard-rejects obvious mismatches (vivid blue, black, brown, beige). Runs first because it's cheap.
+- **CLIP** (`clip-ViT-B-32`) — embeds each surviving image and measures cosine similarity to your reference photos, with disliked references applying a penalty. Thresholds auto-calibrate once you have 4+ references.
+- Final score: `0.6 × CLIP + 0.4 × colour`, adjustable from the UI.
 
-3. **Feedback loop** — liking/disliking a listing crops it to the jeans region and adds it as a positive/negative reference image, which recalibrates CLIP and the colour target for the next run.
+**3. Pipeline (`pipeline.py`)** — orchestrates each run: scrape → pre-filter (dedupe, size, price) → parallel image download (12 threads) → sequential CLIP scoring (CLIP isn't thread-safe) → save matches. Listings are committed the instant they pass threshold so they appear on your phone immediately.
 
-4. **UI** (`app.py`) — Flask app serving a mobile-friendly feed at `http://<your-pc-ip>:5000`. Filter by unseen/liked, sort by score/price/newest, trigger scrapes manually, manage queries and settings.
+**4. Feedback loop** — liking a listing crops it to the jeans region and adds it as a positive reference; disliking adds a negative one. The detector recalibrates on the next run, so it learns your taste over time.
+
+**5. UI (`app.py`)** — Flask app at `http://<your-pc-ip>:5000`. Real-time updates via Server-Sent Events, filter by unseen/liked, sort by score/price/newest, manage queries and settings, mark items as purchased.
+
+---
+
+## Architecture notes
+
+- **Parallel I/O, sequential inference** — image downloads are network-bound and parallelised across 12 threads; CLIP scoring runs single-threaded because the PyTorch model isn't thread-safe. Colour scoring (pure NumPy) runs safely inside the download threads as a pre-filter.
+- **Two-stage download** — a small thumbnail is colour-screened before the full image is fetched, avoiding full downloads for ~80% of listings.
+- **SQLite in WAL mode** — lets the scraper write while the Flask server reads concurrently without locking.
+- **Atomic image writes** — images write to a `.tmp` file then `os.rename`, so the server never serves a half-written file.
 
 ---
 
 ## Setup
 
-**Requirements:** Python 3.11+, Google Chrome installed, Windows (for `start.bat`; Linux/Mac users can run `pipeline.py` and `app.py` directly).
+**Requirements:** Python 3.8+
 
 ```bash
 pip install -r requirements.txt
-playwright install chrome
 ```
 
-Then just run:
+Add a few reference photos of the jeans you're hunting to `reference_images/` (the more the better — 10+ calibrates CLIP well).
 
-```
-start.bat
-```
-
-On first run it opens a browser window for you to log into a throwaway Vinted account. After that it's fully automatic.
-
-**Folder structure after first run:**
-
-```
-JeansFinder/
-├── templates/
-│   └── index.html          ← UI template (must be here, not root)
-├── static/images/          ← downloaded listing images
-├── reference_images/       ← your reference jeans photos
-├── data/
-│   ├── jeansfinder.db
-│   ├── vinted_session.json
-│   └── status.json
-├── logs/
-│   └── pipeline.log
-├── app.py
-├── db.py
-├── pipeline.py
-├── scorer.py
-├── scraper.py
-├── start.bat
-└── requirements.txt
-```
-
----
-
-## Customising for your item
-
-The default queries target dark/charcoal baggy jeans in sizes 32–34. To repurpose this for anything else:
-
-1. **Queries** — edit the `default_queries` list in `db.py`, or add/remove them live from the UI under the Queries tab.
-2. **Size filter** — change `size_filter` in `db.py` defaults, or update it in Settings.
-3. **Reference images** — drop photos of what you want (or don't want) into `reference_images/`. Filenames containing `dislike` or `negative` are treated as negatives.
-4. **Colour target** — computed automatically from your positive references. Put ~5 photos of your ideal item in `reference_images/` before the first run.
-5. **Score threshold** — default 45. Raise it to be more selective, lower it to see more. Adjustable in Settings.
-
----
-
-## Settings
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `score_threshold` | 45 | Minimum score to save a listing |
-| `clip_weight` / `colour_weight` | 0.6 / 0.4 | Score blend weights |
-| `interval_min` / `interval_max` | 45 / 90 | Minutes between scrape runs (randomised) |
-| `notify_threshold` | 75 | Score above which you get an urgent desktop notification |
-| `archive_after_days` | 14 | Unseen listings older than this get hidden |
-| `size_filter` | `["32","33","34","W32","W33","W34","S","M"]` | JSON array of size strings |
-| `multi_photo_score` | true | Score up to 3 extra photos per listing if the first colour score is ≥ 25 |
-| `use_real_chrome` | true | Use installed Chrome instead of Playwright's bundled Chromium |
-| `run_headless` | false | Run browser headless (less detectable off-screen; headless is more likely to get blocked) |
-
----
-
-## Anti-detection notes
-
-Vinted uses Datadome. The scraper avoids detection by:
-- Using real Chrome (`channel='chrome'`) rather than Playwright's bundled Chromium
-- Running non-headless with the window moved off-screen (`--window-position=-32000,-32000`)
-- Randomising user-agent Chrome version, viewport, and inter-query delays (4–9s)
-- Rotating query order each run
-- Saving and reusing session cookies
-
-If you start getting blocked (status shows `session_expired`), delete `data/vinted_session.json` and re-run `start.bat` to reauthenticate. For persistent blocking, switching the cookie fetch to [`curl-cffi`](https://github.com/yifeikong/curl_cffi) with `impersonate="chrome131"` is the next step up.
-
----
-
-## Running on Linux/Mac
+Then run the two processes:
 
 ```bash
-# terminal 1 — scraper
-python pipeline.py
-
-# terminal 2 — UI
-python app.py
+python pipeline.py    # terminal 1 — the scraper loop
+python app.py         # terminal 2 — the web UI
 ```
 
-Login flow: `python scraper.py --login`
+Open the printed `http://<ip>:5000` address on your phone (same WiFi).
+
+Windows users can double-click `start.bat` to launch both at once.
 
 ---
 
-## Limitations
+## Where this pattern applies
 
-- Vinted UK only (`.co.uk`). Changing the domain in `scraper.py` and `check_session` will get you other markets.
-- Session cookies expire — manual re-login required when they do.
-- CLIP model is ~400MB and downloads on first run.
-- Colour scoring works best when reference images have plain/neutral backgrounds.
+The core architecture — scrape a marketplace's JSON API, embed images/text, rank by similarity to a reference set, learn from feedback — generalises to any "find me things that look/read like this" problem: Depop/Grailed for vintage, Rightmove for property aesthetics, AutoTrader for a specific car spec, arXiv for similar papers (swap CLIP for a text embedding model), and so on.
+
+---
+
+## Note
+
+Built for personal use. Respect Vinted's terms of service and rate limits. The scraper uses conservative delays between requests.
