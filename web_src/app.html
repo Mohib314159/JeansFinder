@@ -24,6 +24,7 @@
   --ground:#14171B; --surface:#1C2026; --sunk:#252A31; --ink:#E8EAED; --ink-2:#A2A9B3; --line:#2F353D;
   --thread:#E39447; --thread-soft:rgba(227,148,71,.16); --denim:#8EA2D0; --like:#4DBF86; --dislike:#EE7B69; --muted:#6F7782;}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
 .wrap{max-width:1240px;margin:0 auto;padding-inline:18px}
 h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.015em;text-wrap:balance}
@@ -61,6 +62,14 @@ aside{position:sticky;top:14px;display:grid;gap:14px}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
 .flash{font-size:13px;color:var(--ink-2);min-height:1.5em}
 .flash b{color:var(--thread)}
+.coach{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;background:var(--thread-soft);border:1px solid color-mix(in srgb,var(--thread) 40%,transparent);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.coach b{font-weight:600}
+.x2{border:0;background:transparent;color:var(--ink-2);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.why{font-size:12px;color:var(--ink-2)}
+.why summary{cursor:pointer;list-style:none;color:var(--ink-2);text-decoration:underline dotted;text-underline-offset:3px;width:max-content}
+.why summary::-webkit-details-marker{display:none}
+.why dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin:6px 0 0}
+.why dt{color:var(--ink-2)} .why dd{margin:0;font-family:var(--mono);color:var(--ink)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .card.below{opacity:.55}
@@ -99,6 +108,18 @@ details.rejects p{color:var(--ink-2);font-size:14px;margin:6px 0 12px;max-width:
 .how p{margin:0;color:var(--ink-2);font-size:14px}
 footer{padding-block:18px 34px;color:var(--ink-2);font-size:13px;display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;border-top:1px solid var(--line)}
 .empty{padding:40px;text-align:center;color:var(--ink-2)}
+
+section.log{padding-block:18px 26px}
+section.log h2{font-size:20px;margin-bottom:10px}
+.tl{list-style:none;margin:0;padding:0;border-left:2px solid var(--line);display:grid;gap:12px}
+.tl li{display:grid;grid-template-columns:80px 88px 1fr;gap:10px;align-items:baseline;padding-left:16px;position:relative;max-width:880px}
+.tl li::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--ground);border:2px solid var(--ink-2)}
+.tl .when{font:400 12px var(--mono);color:var(--ink-2)}
+.tl .st{font:600 11px var(--mono);padding:2px 8px;border-radius:999px;justify-self:start}
+.tl .st.done{color:var(--like);background:color-mix(in srgb,var(--like) 12%,transparent)}
+.tl .st.next{color:var(--denim);background:color-mix(in srgb,var(--denim) 14%,transparent)}
+.tl div{color:var(--ink-2);font-size:14px} .tl b{color:var(--ink);font-weight:600}
+@media (max-width:620px){.tl li{grid-template-columns:1fr}}
 @media (max-width:860px){.layout{grid-template-columns:1fr}aside{position:static}.how{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:no-preference){.card{transition:box-shadow .2s,opacity .2s}}
 </style>
@@ -140,6 +161,7 @@ footer{padding-block:18px 34px;color:var(--ink-2);font-size:13px;display:flex;ga
       </div>
       <div class="flash" id="flash" aria-live="polite"></div>
     </div>
+    <div class="coach" id="coach" hidden><div><b>Try it:</b> press <b>Like</b> on two or three you'd actually wear. The feed re-ranks straight away, and the ▲▼ badges show what moved.</div><button class="x2" id="coachX" aria-label="Dismiss">×</button></div>
     <div class="grid" id="grid"></div>
     <details class="rejects" id="rejBox">
       <summary id="rejSum">Filtered out before CLIP</summary>
@@ -153,9 +175,17 @@ footer{padding-block:18px 34px;color:var(--ink-2);font-size:13px;display:flex;ga
   <section class="how" aria-label="How it works">
     <div><h3>Collect</h3><p>A scraper runs my saved Vinted searches every 45 to 90 minutes and pulls new listings with their photos. It skips listings it has already seen and anything outside my size.</p></div>
     <div><h3>Filter, then rank</h3><p>The colour check removes obvious misses. Everything else goes through CLIP, which turns each photo into a 512-number vector. The score is the average similarity to my 3 closest references, minus a penalty if it looks like something I disliked.</p></div>
-    <div><h3>Learn</h3><p>A like crops the photo to the jeans and adds it as a reference, and score cut-offs recalibrate from the references themselves. On this page all of that runs in your browser on a real snapshot; the real app does it on my PC and sends matches to my phone.</p></div>
+    <div><h3>Learn</h3><p>A like crops the photo to the jeans and adds it as a reference, and score cut-offs recalibrate from the references themselves. On this page all of that runs in your browser on a real snapshot. The real app runs on my PC and I check the feed on my phone.</p></div>
   </section>
-  <footer><span id="snap">Snapshot</span><span>Built by Mohib Murtaza · <a href="https://github.com/Mohib314159/JeansFinder">github.com/Mohib314159/JeansFinder</a></span></footer>
+  <section class="log" aria-labelledby="logH">
+    <h2 id="logH">Build log</h2>
+    <ol class="tl">
+      <li><span class="when">Jun 2026</span><span class="st done">shipped</span><div><b>Built it for myself.</b> Scraper, colour filter, CLIP ranking, like/dislike learning, and a phone-friendly feed that updates live while the scraper runs.</div></li>
+      <li><span class="when">Sep 2026</span><span class="st done">shipped</span><div><b>This public demo.</b> The ranking re-implemented in the browser on a real snapshot, so anyone can try the feedback loop without a server. Faces in listing photos are blurred.</div></li>
+      <li><span class="when">next</span><span class="st next">next</span><div><b>Drop the browser from the scraper.</b> Call Vinted's catalogue endpoint directly instead of driving Chrome: faster and lighter.</div></li>
+    </ol>
+  </section>
+  <footer><span id="snap">Snapshot</span><span>Built by Mohib Murtaza · <a href="https://www.linkedin.com/in/mohib-ullah-murtaza-4ba2a1389">LinkedIn</a> · <a href="https://github.com/Mohib314159/JeansFinder">GitHub</a></span></footer>
 </div>
 
 <script id="data" type="application/json">/*DATA*/</script>
@@ -202,7 +232,7 @@ function score(l,M){
   const top=sims.slice(0,k).reduce((a,b)=>a+b,0)/k;
   const pen=M.neg.length?Math.max(...M.neg.map(n=>dot(n,l.e)))*.35:0;
   const clip=Math.max(0,Math.min(100,(top-pen-M.lo)/Math.max(.001,M.hi-M.lo)*100));
-  return {rej:null,clip,colour,final:Math.min(100,wClip*clip+(1-wClip)*colour),pen,near:ranked.slice(0,k).map(x=>M.posImg[x[1]])};
+  return {rej:null,clip,colour,final:Math.min(100,wClip*clip+(1-wClip)*colour),pen,top,k,near:ranked.slice(0,k).map(x=>M.posImg[x[1]])};
 }
 const price=p=>parseFloat(String(p).replace(/[^0-9.]/g,''))||0;
 const thumbUp='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4V10h3zm0 0 4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 21H7"/></svg>';
@@ -225,6 +255,11 @@ function render(msg){
         <div class="m"><b>${esc(l.price)}</b><span>${esc(l.size)}</span>${l.brand?`<span>${esc(l.brand)}</span>`:''}</div>
         <div class="bars"><span>looks like</span><div class="track"><div class="fill" style="width:${s.clip}%;background:var(--denim)"></div></div><span class="n">${Math.round(s.clip)}</span>
           <span>colour</span><div class="track"><div class="fill" style="width:${s.colour}%;background:var(--thread)"></div></div><span class="n">${Math.round(s.colour)}</span></div>
+        <details class="why"><summary>why ${Math.round(s.final)}?</summary><dl>
+          <dt>looks like refs</dt><dd>${Math.round(s.clip)} × ${Math.round(wClip*100)}%</dd>
+          <dt>colour match</dt><dd>${Math.round(s.colour)} × ${Math.round((1-wClip)*100)}%</dd>
+          <dt>similarity</dt><dd>${s.top.toFixed(3)} avg of closest ${s.k}</dd>
+          ${s.pen?`<dt>dislike penalty</dt><dd>−${s.pen.toFixed(3)}</dd>`:''}</dl></details>
         <div class="near" title="The references this listing is closest to">${s.near.map(u=>`<img src="${u}" alt="">`).join('')}<span>closest refs</span></div>
         <div class="acts"><button class="like" data-id="${l.id}" data-v="1" aria-pressed="${f>0}" aria-label="Like">${thumbUp}Like</button><button class="dis" data-id="${l.id}" data-v="-1" aria-pressed="${f<0}" aria-label="Dislike">${thumbDn}Nope</button><a href="${esc(l.url)}" target="_blank" rel="noopener" aria-label="Open on Vinted">↗</a></div>
       </div></article>`;}).join('');
@@ -253,6 +288,11 @@ $('wClip').oninput=e=>{wClip=e.target.value/100;$('oClip').textContent=e.target.
 $('thr').oninput=e=>{thr=+e.target.value;$('oThr').textContent=thr;render();};
 $('reset').onclick=()=>{for(const k in fb)delete fb[k];prevRank={};$('flash').textContent='';render();};
 document.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{sortBy=b.dataset.sort;document.querySelectorAll('[data-sort]').forEach(x=>x.setAttribute('aria-pressed',x===b));render();});
+let seen=false; try{seen=localStorage.getItem('jf-coach')==='1';}catch(e){}
+if(!seen) $('coach').hidden=false;
+const hideCoach=()=>{$('coach').hidden=true; try{localStorage.setItem('jf-coach','1');}catch(e){}};
+$('coachX').onclick=hideCoach;
+$('grid').addEventListener('click',e=>{if(e.target.closest('button[data-id]')) hideCoach();});
 $('snap').textContent=`Snapshot of real Vinted listings, ${F.generated_at.replace('T',' ')} UTC · searches: ${F.queries.join(', ')}`;
 render();
 })();

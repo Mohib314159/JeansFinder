@@ -19,20 +19,20 @@ Runs as two processes: a background scraper pipeline that polls Vinted every 45�
 - **CLIP** (`clip-ViT-B-32`) — embeds each surviving image and measures cosine similarity to your reference photos, with disliked references applying a penalty. Thresholds auto-calibrate once you have 4+ references.
 - Final score: `0.6 × CLIP + 0.4 × colour`, adjustable from the UI.
 
-**3. Pipeline (`pipeline.py`)** — orchestrates each run: scrape → pre-filter (dedupe, size, price) → parallel image download (12 threads) → sequential CLIP scoring (CLIP isn't thread-safe) → save matches. Listings are committed the instant they pass threshold so they appear on your phone immediately.
+**3. Pipeline (`pipeline.py`)**: each run scrapes, skips listings it has already seen or that aren't in my sizes, scores the first photo (and up to three more if the first one's colour is plausible), and saves anything above the threshold straight away so it shows up in the feed during the run. A desktop notification fires for very high scores.
 
-**4. Feedback loop** — liking a listing crops it to the jeans region and adds it as a positive reference; disliking adds a negative one. The detector recalibrates on the next run, so it learns your taste over time.
+**4. Feedback loop**: liking a listing crops the photo to the jeans and adds it as a reference; disliking adds it as a negative reference. Scores recalibrate from the references on the next run.
 
-**5. UI (`app.py`)** — Flask app at `http://<your-pc-ip>:5000`. Real-time updates via Server-Sent Events, filter by unseen/liked, sort by score/price/newest, manage queries and settings, mark items as purchased.
+**5. UI (`app.py`)**: a Flask app at `http://<your-pc-ip>:5000` that I open on my phone on the same WiFi. Feed sorted by score, price or newest; like/dislike; mark as bought; edit searches and settings. It refreshes stats every 30 seconds.
 
 ---
 
-## Architecture notes
+## Engineering notes
 
-- **Parallel I/O, sequential inference** — image downloads are network-bound and parallelised across 12 threads; CLIP scoring runs single-threaded because the PyTorch model isn't thread-safe. Colour scoring (pure NumPy) runs safely inside the download threads as a pre-filter.
-- **Two-stage download** — a small thumbnail is colour-screened before the full image is fetched, avoiding full downloads for ~80% of listings.
-- **SQLite in WAL mode** — lets the scraper write while the Flask server reads concurrently without locking.
-- **Atomic image writes** — images write to a `.tmp` file then `os.rename`, so the server never serves a half-written file.
+- **SQLite in WAL mode** so the scraper can write while the web app reads, without locking.
+- **Atomic image writes**: images go to a `.tmp` file and are renamed into place, so the app never serves a half-written file.
+- **Cheap check first**: the colour filter is plain NumPy and runs before CLIP, so most wrong listings never reach the slow model.
+- **Scores calibrate themselves**: once there are 4+ references, the CLIP score range is set from how similar the references are to each other (10th to 80th percentile), rather than hard-coded.
 
 ---
 
