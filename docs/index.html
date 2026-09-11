@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JeansFinder</title>
 <meta name="description" content="A Vinted feed that ranks listings by how much they look like the jeans I'm hunting, and learns from likes and dislikes.">
+<meta property="og:title" content="JeansFinder">
+<meta property="og:description" content="Ranks Vinted listings by how much they look like the jeans I'm hunting. Like or dislike one and the feed re-ranks.">
+<meta property="og:image" content="https://mohib314159.github.io/JeansFinder/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M9 3h14l3 26h-7l-3-15-3 15H6z' fill='%233B4A6B'/%3E%3Cpath d='M9 7h14' stroke='%23C8741F' stroke-width='2' stroke-dasharray='2 2'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -79,6 +84,9 @@ aside{position:sticky;top:14px;display:grid;gap:14px}
 .bars .track{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
 .bars .fill{height:100%;border-radius:3px}
 .bars .n{font-family:var(--mono)}
+.near{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-2)}
+.near img{width:22px;height:29px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.near span{margin-left:4px}
 .acts{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-top:auto;padding-top:4px}
 .acts button,.acts a{display:flex;align-items:center;justify-content:center;gap:6px;font:500 13px var(--body);padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none}
 .acts .like:hover,.acts .like[aria-pressed="true"]{border-color:var(--like);color:var(--like);background:color-mix(in srgb,var(--like) 10%,transparent)}
@@ -182,24 +190,24 @@ let wClip=.6, thr=45, sortBy='score', prevRank={};
 // --- same rules as scorer.py ---
 function hardReject(rgb){for(const [k,[ref,t]] of REJ) if(dist(rgb,ref)<t) return k; return null;}
 function model(){
-  const pos=F.refs.filter(r=>!r.neg).map(r=>({e:r.e,rgb:r.median_rgb}));
+  const pos=F.refs.filter(r=>!r.neg).map(r=>({e:r.e,rgb:r.median_rgb,img:r.img}));
   const neg=F.refs.filter(r=>r.neg).map(r=>r.e);
-  for(const [id,v] of Object.entries(fb)){const l=byId[id]; if(v>0) pos.push({e:l.ec,rgb:l.median_rgb}); else neg.push(l.ec);}
+  for(const [id,v] of Object.entries(fb)){const l=byId[id]; if(v>0) pos.push({e:l.ec,rgb:l.median_rgb,img:l.img}); else neg.push(l.ec);}
   let lo=.17,hi=.43;
   if(pos.length>=4){const s=[];for(let i=0;i<pos.length;i++)for(let j=0;j<pos.length;j++)if(i!==j){const v=dot(pos[i].e,pos[j].e);if(v>0)s.push(v);}lo=pct(s,10);hi=pct(s,80);}
   const target=[0,1,2].map(c=>median(pos.map(p=>p.rgb[c])));   // approx: median of per-photo medians
-  return {pos:pos.map(p=>p.e),neg,lo,hi,target};
+  return {pos:pos.map(p=>p.e),posImg:pos.map(p=>p.img),neg,lo,hi,target};
 }
 function score(l,M){
   const rej=hardReject(l.mean_rgb);
   if(rej) return {rej,final:0,clip:0,colour:0};
   const d=dist(l.mean_rgb,M.target);
   const colour=Math.min(100,Math.max(0,(95-d)/95*100)+Math.min(12,l.texture/2.5));
-  const sims=M.pos.map(p=>dot(p,l.e)).sort((a,b)=>b-a), k=Math.min(3,sims.length);
+  const ranked=M.pos.map((p,i)=>[dot(p,l.e),i]).sort((a,b)=>b[0]-a[0]), sims=ranked.map(x=>x[0]), k=Math.min(3,sims.length);
   const top=sims.slice(0,k).reduce((a,b)=>a+b,0)/k;
   const pen=M.neg.length?Math.max(...M.neg.map(n=>dot(n,l.e)))*.35:0;
   const clip=Math.max(0,Math.min(100,(top-pen-M.lo)/Math.max(.001,M.hi-M.lo)*100));
-  return {rej:null,clip,colour,final:Math.min(100,wClip*clip+(1-wClip)*colour),pen};
+  return {rej:null,clip,colour,final:Math.min(100,wClip*clip+(1-wClip)*colour),pen,near:ranked.slice(0,k).map(x=>M.posImg[x[1]])};
 }
 const price=p=>parseFloat(String(p).replace(/[^0-9.]/g,''))||0;
 const thumbUp='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4V10h3zm0 0 4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 21H7"/></svg>';
@@ -222,6 +230,7 @@ function render(msg){
         <div class="m"><b>${esc(l.price)}</b><span>${esc(l.size)}</span>${l.brand?`<span>${esc(l.brand)}</span>`:''}</div>
         <div class="bars"><span>looks like</span><div class="track"><div class="fill" style="width:${s.clip}%;background:var(--denim)"></div></div><span class="n">${Math.round(s.clip)}</span>
           <span>colour</span><div class="track"><div class="fill" style="width:${s.colour}%;background:var(--thread)"></div></div><span class="n">${Math.round(s.colour)}</span></div>
+        <div class="near" title="The references this listing is closest to">${s.near.map(u=>`<img src="${u}" alt="">`).join('')}<span>closest refs</span></div>
         <div class="acts"><button class="like" data-id="${l.id}" data-v="1" aria-pressed="${f>0}" aria-label="Like">${thumbUp}Like</button><button class="dis" data-id="${l.id}" data-v="-1" aria-pressed="${f<0}" aria-label="Dislike">${thumbDn}Nope</button><a href="${esc(l.url)}" target="_blank" rel="noopener" aria-label="Open on Vinted">↗</a></div>
       </div></article>`;}).join('');
   $('grid').querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>{

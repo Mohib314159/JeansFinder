@@ -47,7 +47,26 @@ def colour_stats(img):
     return px.mean(axis=0), float(px.std(axis=0).mean()), np.median(px, axis=0)
 
 
+def blur_faces(img):
+    """Listing photos often show the seller. Blur any face before it goes on a public page.
+    Uses OpenCV's bundled face detector if opencv is installed; otherwise the photo is kept
+    as-is and you should skim docs/data/img/ before pushing."""
+    try:
+        import cv2
+    except ImportError:
+        return img, False
+    arr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+    det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    faces = det.detectMultiScale(cv2.cvtColor(arr, cv2.COLOR_BGR2GRAY), 1.1, 5, minSize=(24, 24))
+    for (x, y, w, h) in faces:
+        x0, y0 = max(0, x - w // 3), max(0, y - h // 2)
+        x1, y1 = min(arr.shape[1], x + w + w // 3), min(arr.shape[0], y + h + h // 3)
+        arr[y0:y1, x0:x1] = cv2.GaussianBlur(arr[y0:y1, x0:x1], (0, 0), max(w, h) / 4)
+    return Image.fromarray(cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)), len(faces) > 0
+
+
 def save_thumb(img, name):
+    img, _ = blur_faces(img)
     w, h = img.size
     t = img.resize((THUMB_W, int(h * THUMB_W / w)), Image.LANCZOS) if w > THUMB_W else img
     t.save(os.path.join(IMG, name), "JPEG", quality=78, optimize=True)
@@ -62,6 +81,38 @@ def fetch(url):
     except Exception:
         pass
     return None
+
+
+def make_og(listings, refs):
+    """Link-preview image (docs/og.png): the 8 listings closest to the references."""
+    from PIL import ImageDraw, ImageFont
+    dec = lambda b: np.frombuffer(base64.b64decode(b), np.int8).astype(np.float32) / 127
+    pos = np.array([dec(r["emb"]) for r in refs if not r["neg"]])
+    if not len(pos) or not listings:
+        return
+    sims = [float(np.sort(pos @ dec(l["emb"]))[-3:].mean()) for l in listings]
+    top = [listings[i] for i in np.argsort(sims)[::-1][:8]]
+    W, H, pad = 1200, 630, 16
+    og = Image.new("RGB", (W, H), (236, 238, 240))
+    d = ImageDraw.Draw(og)
+    for x in range(0, W, 14):
+        d.line([(x, 8), (x + 7, 8)], fill=(200, 116, 31), width=3)
+    tw, th = 170, 227
+    for i, l in enumerate(top):
+        im = Image.open(os.path.join(BASE, "docs", l["img"])).convert("RGB")
+        im = im.resize((tw, int(im.height * tw / im.width)))
+        im = im.crop((0, 0, tw, min(th, im.height)))
+        x, y = 420 + (i % 4) * (tw + pad), 60 + (i // 4) * (th + pad)
+        og.paste(im, (x, y))
+    try:
+        big = ImageFont.truetype("arialbd.ttf", 60); small = ImageFont.truetype("arial.ttf", 26)
+    except OSError:
+        big = small = ImageFont.load_default()
+    d.text((48, 70), "JeansFinder", font=big, fill=(27, 31, 36))
+    y = 160
+    for line in ["Ranks Vinted listings by", "how much they look like", "the jeans I'm hunting.", "", "Like or dislike one and", "the feed re-ranks."]:
+        d.text((48, y), line, font=small, fill=(27, 31, 36)); y += 36
+    og.save(os.path.join(BASE, "docs", "og.png"), optimize=True)
 
 
 def main():
@@ -98,8 +149,11 @@ def main():
     if not listings:
         sys.exit("Scrape returned nothing. Run: python scraper.py --login")
 
+    from pipeline import size_ok          # same size filter as the live app
     out, rejects = [], 0
     for item in listings:
+        if not size_ok(item.get("size", "")):
+            continue
         if len(out) >= args.max:
             break
         photos = []
@@ -128,6 +182,7 @@ def main():
                     "emb": q8(e_full), "emb_crop": q8(e_crop)})
         time.sleep(0.2)
 
+    make_og(out, refs)
     feed = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "queries": [q for q, _, _ in get_enabled_queries()[: args.queries]],
             "weights": {"clip": 0.6, "colour": 0.4},

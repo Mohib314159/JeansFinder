@@ -6,3 +6,4 @@ numpy>=1.26
 sentence-transformers>=3.0
 plyer>=2.1
 playwright>=1.44
+opencv-python-headless>=4.8   # export_demo.py: blurs faces in listing photos
