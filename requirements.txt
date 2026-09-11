@@ -5,3 +5,4 @@ pillow>=10.0
 numpy>=1.26
 sentence-transformers>=3.0
 plyer>=2.1
+playwright>=1.44

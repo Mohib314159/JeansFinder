@@ -1,0 +1,250 @@
+<title>JeansFinder</title>
+<meta name="description" content="A Vinted feed that ranks listings by how much they look like the jeans I'm hunting, and learns from likes and dislikes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#ECEEF0; --surface:#FFFFFF; --sunk:#E2E5E9; --ink:#1B1F24; --ink-2:#5A616B; --line:#D3D7DD;
+  --thread:#C8741F; --thread-soft:rgba(200,116,31,.14); --denim:#3B4A6B;
+  --like:#1F7A4D; --dislike:#B63A2B; --muted:#8A919B;
+  --display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#14171B; --surface:#1C2026; --sunk:#252A31; --ink:#E8EAED; --ink-2:#A2A9B3; --line:#2F353D;
+  --thread:#E39447; --thread-soft:rgba(227,148,71,.16); --denim:#8EA2D0; --like:#4DBF86; --dislike:#EE7B69; --muted:#6F7782;}}
+:root[data-theme="dark"]{
+  --ground:#14171B; --surface:#1C2026; --sunk:#252A31; --ink:#E8EAED; --ink-2:#A2A9B3; --line:#2F353D;
+  --thread:#E39447; --thread-soft:rgba(227,148,71,.16); --denim:#8EA2D0; --like:#4DBF86; --dislike:#EE7B69; --muted:#6F7782;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:18px}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.015em;text-wrap:balance}
+:focus-visible{outline:2px solid var(--thread);outline-offset:2px}
+.mono{font-family:var(--mono)}
+/* stitch line: the one ornament — denim topstitching */
+.stitch{height:0;border-top:2px dashed var(--thread);opacity:.8}
+header{padding-block:26px 18px;display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end;justify-content:space-between}
+header h1{font-size:40px;font-weight:700;line-height:1}
+header p{margin:8px 0 0;max-width:64ch;font-size:16px}
+.hlinks{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:500 13px var(--body);padding:8px 14px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);background:transparent;text-decoration:none;cursor:pointer}
+.btn:hover{background:var(--ink);color:var(--ground)}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start;padding-block:18px 40px}
+aside{position:sticky;top:14px;display:grid;gap:14px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.box h2{font-size:16px;font-weight:700;margin-bottom:2px}
+.box .hint{font-size:13px;color:var(--ink-2);margin:0 0 10px}
+.refs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ref{position:relative;aspect-ratio:3/4;border-radius:6px;overflow:hidden;background:var(--sunk);border:2px solid transparent}
+.ref img{width:100%;height:100%;object-fit:cover;display:block}
+.ref.pos.fb{border-color:var(--like)} .ref.neg{border-color:var(--dislike)}
+.ref .x{position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:12px;line-height:18px;padding:0;cursor:pointer}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--ink-2);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;margin-top:10px;font-size:14px}
+.row output{font-family:var(--mono);font-size:13px}
+.row input{grid-column:1/-1;width:100%;accent-color:var(--thread)}
+.stats{font-size:13px;color:var(--ink-2);display:grid;gap:3px}
+.stats b{color:var(--ink);font-family:var(--mono);font-weight:600}
+.swatch{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;border:1px solid var(--line)}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.toolbar .l{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:500 13px var(--body);padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
+.flash{font-size:13px;color:var(--ink-2);min-height:1.5em}
+.flash b{color:var(--thread)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card.below{opacity:.55}
+.card.liked{box-shadow:0 0 0 2px var(--like)} .card.disliked{box-shadow:0 0 0 2px var(--dislike)}
+.ph{position:relative;aspect-ratio:3/4;background:var(--sunk)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.score{position:absolute;left:8px;top:8px;background:rgba(20,22,26,.82);color:#fff;border-radius:8px;padding:4px 8px;font:600 18px var(--mono);line-height:1.1}
+.score small{display:block;font:400 10px var(--body);opacity:.8;letter-spacing:.04em}
+.rank{position:absolute;right:8px;top:8px;font:600 12px var(--mono);padding:3px 7px;border-radius:999px;background:var(--surface);color:var(--ink)}
+.rank.up{color:var(--like)} .rank.down{color:var(--dislike)}
+.body{padding:10px 12px 12px;display:grid;gap:6px;flex:1}
+.t{font-weight:600;font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.m{font-size:13px;color:var(--ink-2);display:flex;gap:8px;flex-wrap:wrap}
+.m b{color:var(--ink);font-weight:600}
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:3px 8px;align-items:center;font-size:11px;color:var(--ink-2)}
+.bars .track{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.bars .fill{height:100%;border-radius:3px}
+.bars .n{font-family:var(--mono)}
+.acts{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-top:auto;padding-top:4px}
+.acts button,.acts a{display:flex;align-items:center;justify-content:center;gap:6px;font:500 13px var(--body);padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none}
+.acts .like:hover,.acts .like[aria-pressed="true"]{border-color:var(--like);color:var(--like);background:color-mix(in srgb,var(--like) 10%,transparent)}
+.acts .dis:hover,.acts .dis[aria-pressed="true"]{border-color:var(--dislike);color:var(--dislike);background:color-mix(in srgb,var(--dislike) 10%,transparent)}
+.acts svg{width:15px;height:15px}
+details.rejects{margin-top:26px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+details.rejects summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:17px}
+details.rejects p{color:var(--ink-2);font-size:14px;margin:6px 0 12px;max-width:70ch}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.rj{font-size:12px;color:var(--ink-2)}
+.rj img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;display:block;margin-bottom:4px;filter:saturate(.9)}
+.why{display:inline-block;font:600 11px var(--mono);color:var(--dislike);background:color-mix(in srgb,var(--dislike) 12%,transparent);padding:2px 6px;border-radius:5px}
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;padding-block:8px 16px}
+.how h3{font-size:17px;margin-bottom:4px}
+.how p{margin:0;color:var(--ink-2);font-size:14px}
+footer{padding-block:18px 34px;color:var(--ink-2);font-size:13px;display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;border-top:1px solid var(--line)}
+.empty{padding:40px;text-align:center;color:var(--ink-2)}
+@media (max-width:860px){.layout{grid-template-columns:1fr}aside{position:static}.how{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:no-preference){.card{transition:box-shadow .2s,opacity .2s}}
+</style>
+
+<div class="stitch" aria-hidden="true"></div>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>JeansFinder</h1>
+      <p>I use this to find one specific style of jeans on Vinted: baggy, dark grey, early-2000s. It checks new listings automatically, throws out obviously wrong colours, then ranks the rest by how much the photos look like examples I like. <b>Try it:</b> like or dislike a few listings and watch the feed re-rank.</p>
+    </div>
+    <div class="hlinks"><a class="btn" href="https://github.com/Mohib314159/JeansFinder">Code on GitHub</a></div>
+  </header>
+</div>
+<div class="stitch" aria-hidden="true"></div>
+
+<div class="wrap layout">
+  <aside>
+    <div class="box">
+      <h2>What I'm looking for</h2>
+      <p class="hint">Reference photos. Likes get added here, dislikes count against anything similar.</p>
+      <div class="refs" id="refs"></div>
+      <div class="legend"><span><i style="background:var(--like)"></i>added by you</span><span><i style="background:var(--dislike)"></i>disliked</span></div>
+    </div>
+    <div class="box">
+      <h2>How it scores</h2>
+      <div class="row"><label for="wClip">Looks like my references (CLIP)</label><output id="oClip">60%</output><input id="wClip" type="range" min="0" max="100" step="5" value="60"></div>
+      <div class="row"><label for="thr">Hide below</label><output id="oThr">45</output><input id="thr" type="range" min="0" max="90" step="5" value="45"></div>
+      <div class="stats" id="stats" style="margin-top:12px"></div>
+      <button class="btn" id="reset" style="margin-top:12px">Reset my likes</button>
+    </div>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <div class="l" role="group" aria-label="Sort">
+        <button class="chip" data-sort="score" aria-pressed="true">Best match</button>
+        <button class="chip" data-sort="price" aria-pressed="false">Cheapest</button>
+      </div>
+      <div class="flash" id="flash" aria-live="polite"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <details class="rejects" id="rejBox">
+      <summary id="rejSum">Filtered out before CLIP</summary>
+      <p>A cheap colour check runs first. It averages the pixels in the middle of the photo (skipping white backgrounds) and throws out anything close to a colour I never want. This skips the slow image model for most listings.</p>
+      <div class="rgrid" id="rejects"></div>
+    </details>
+  </main>
+</div>
+
+<div class="wrap">
+  <section class="how" aria-label="How it works">
+    <div><h3>Collect</h3><p>A scraper runs my saved Vinted searches every 45 to 90 minutes and pulls new listings with their photos. It skips listings it has already seen and anything outside my size.</p></div>
+    <div><h3>Filter, then rank</h3><p>The colour check removes obvious misses. Everything else goes through CLIP, which turns each photo into a 512-number vector. The score is the average similarity to my 3 closest references, minus a penalty if it looks like something I disliked.</p></div>
+    <div><h3>Learn</h3><p>A like crops the photo to the jeans and adds it as a reference, and score cut-offs recalibrate from the references themselves. On this page all of that runs in your browser on a real snapshot; the real app does it on my PC and sends matches to my phone.</p></div>
+  </section>
+  <footer><span id="snap">Snapshot</span><span>Built by Mohib Murtaza · <a href="https://github.com/Mohib314159/JeansFinder">github.com/Mohib314159/JeansFinder</a></span></footer>
+</div>
+
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+(async function(){
+const $=id=>document.getElementById(id);
+let F;
+const inline=$('data').textContent.trim();
+try{ F = inline && inline!=='/*DATA*/' ? JSON.parse(inline) : await (await fetch('data/feed.json')).json(); }
+catch(e){ $('grid').innerHTML='<div class="empty">No snapshot yet. Run <span class="mono">python export_demo.py</span> to make one.</div>'; return; }
+
+const dec=b=>{const s=atob(b),a=new Float32Array(s.length);for(let i=0;i<s.length;i++){let v=s.charCodeAt(i);if(v>127)v-=256;a[i]=v/127;}let n=0;for(const x of a)n+=x*x;n=Math.sqrt(n);for(let i=0;i<a.length;i++)a[i]/=n;return a;};
+const dot=(a,b)=>{let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s;};
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+const pct=(arr,p)=>{const a=[...arr].sort((x,y)=>x-y);if(!a.length)return 0;const k=(a.length-1)*p/100,f=Math.floor(k),c=Math.ceil(k);return a[f]+(a[c]-a[f])*(k-f);};  // numpy "linear"
+const median=arr=>pct(arr,50);
+
+F.refs.forEach(r=>r.e=dec(r.emb));
+F.listings.forEach(l=>{l.e=dec(l.emb);l.ec=dec(l.emb_crop);});
+const L=F.listings, byId=Object.fromEntries(L.map(l=>[l.id,l]));
+const REJ=Object.entries(F.hard_rejects);
+const NICE={vivid_blue:'vivid blue',indigo_blue:'indigo',too_light:'too light',warm_brown:'brown',pure_black:'black',olive:'olive',red_tone:'red',beige:'beige'};
+
+const fb={};              // id -> 1 like / -1 dislike
+let wClip=.6, thr=45, sortBy='score', prevRank={};
+
+// --- same rules as scorer.py ---
+function hardReject(rgb){for(const [k,[ref,t]] of REJ) if(dist(rgb,ref)<t) return k; return null;}
+function model(){
+  const pos=F.refs.filter(r=>!r.neg).map(r=>({e:r.e,rgb:r.median_rgb}));
+  const neg=F.refs.filter(r=>r.neg).map(r=>r.e);
+  for(const [id,v] of Object.entries(fb)){const l=byId[id]; if(v>0) pos.push({e:l.ec,rgb:l.median_rgb}); else neg.push(l.ec);}
+  let lo=.17,hi=.43;
+  if(pos.length>=4){const s=[];for(let i=0;i<pos.length;i++)for(let j=0;j<pos.length;j++)if(i!==j){const v=dot(pos[i].e,pos[j].e);if(v>0)s.push(v);}lo=pct(s,10);hi=pct(s,80);}
+  const target=[0,1,2].map(c=>median(pos.map(p=>p.rgb[c])));   // approx: median of per-photo medians
+  return {pos:pos.map(p=>p.e),neg,lo,hi,target};
+}
+function score(l,M){
+  const rej=hardReject(l.mean_rgb);
+  if(rej) return {rej,final:0,clip:0,colour:0};
+  const d=dist(l.mean_rgb,M.target);
+  const colour=Math.min(100,Math.max(0,(95-d)/95*100)+Math.min(12,l.texture/2.5));
+  const sims=M.pos.map(p=>dot(p,l.e)).sort((a,b)=>b-a), k=Math.min(3,sims.length);
+  const top=sims.slice(0,k).reduce((a,b)=>a+b,0)/k;
+  const pen=M.neg.length?Math.max(...M.neg.map(n=>dot(n,l.e)))*.35:0;
+  const clip=Math.max(0,Math.min(100,(top-pen-M.lo)/Math.max(.001,M.hi-M.lo)*100));
+  return {rej:null,clip,colour,final:Math.min(100,wClip*clip+(1-wClip)*colour),pen};
+}
+const price=p=>parseFloat(String(p).replace(/[^0-9.]/g,''))||0;
+const thumbUp='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4V10h3zm0 0 4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 21H7"/></svg>';
+const thumbDn='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 10v11H4V10h3zm0 0 4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 21H7"/></svg>';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function render(msg){
+  const M=model();
+  const S=L.map(l=>({l,...score(l,M)}));
+  const ok=S.filter(s=>!s.rej).sort((a,b)=>b.final-a.final);
+  const rank={}; ok.forEach((s,i)=>rank[s.l.id]=i);
+  const view=[...ok]; if(sortBy==='price') view.sort((a,b)=>price(a.l.price)-price(b.l.price));
+  $('grid').innerHTML=view.map(s=>{
+    const l=s.l, r=rank[l.id], pr=prevRank[l.id];
+    const mv=(pr===undefined||msg===undefined)?'':(pr>r?`<span class="rank up">▲ ${pr-r}</span>`:pr<r?`<span class="rank down">▼ ${r-pr}</span>`:'');
+    const f=fb[l.id]||0;
+    return `<article class="card ${s.final<thr?'below':''} ${f>0?'liked':f<0?'disliked':''}">
+      <div class="ph"><img src="${l.img}" alt="${esc(l.title)}" loading="lazy"><div class="score">${Math.round(s.final)}<small>match</small></div>${mv}</div>
+      <div class="body"><div class="t">${esc(l.title)}</div>
+        <div class="m"><b>${esc(l.price)}</b><span>${esc(l.size)}</span>${l.brand?`<span>${esc(l.brand)}</span>`:''}</div>
+        <div class="bars"><span>looks like</span><div class="track"><div class="fill" style="width:${s.clip}%;background:var(--denim)"></div></div><span class="n">${Math.round(s.clip)}</span>
+          <span>colour</span><div class="track"><div class="fill" style="width:${s.colour}%;background:var(--thread)"></div></div><span class="n">${Math.round(s.colour)}</span></div>
+        <div class="acts"><button class="like" data-id="${l.id}" data-v="1" aria-pressed="${f>0}" aria-label="Like">${thumbUp}Like</button><button class="dis" data-id="${l.id}" data-v="-1" aria-pressed="${f<0}" aria-label="Dislike">${thumbDn}Nope</button><a href="${esc(l.url)}" target="_blank" rel="noopener" aria-label="Open on Vinted">↗</a></div>
+      </div></article>`;}).join('');
+  $('grid').querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.id,v=+b.dataset.v; prevRank=rank;
+    if(fb[id]===v) delete fb[id]; else fb[id]=v;
+    const moved=Object.keys(rank).length; render(v>0?'like':'dislike');
+  });
+  const rej=S.filter(s=>s.rej);
+  $('rejSum').textContent=`Filtered out before CLIP (${rej.length})`;
+  $('rejects').innerHTML=rej.map(s=>`<div class="rj"><img src="${s.l.img}" alt="" loading="lazy"><span class="why">${NICE[s.rej]||s.rej}</span> <span class="swatch" style="background:rgb(${s.l.mean_rgb.map(Math.round).join(',')})"></span></div>`).join('');
+  // refs
+  const likes=Object.entries(fb).filter(([,v])=>v>0).map(([id])=>byId[id]), dis=Object.entries(fb).filter(([,v])=>v<0).map(([id])=>byId[id]);
+  $('refs').innerHTML=F.refs.map(r=>`<div class="ref ${r.neg?'neg':'pos'}"><img src="${r.img}" alt="Reference photo"></div>`).join('')+
+    likes.map(l=>`<div class="ref pos fb"><img src="${l.img}" alt=""><button class="x" data-id="${l.id}" aria-label="Remove">×</button></div>`).join('')+
+    dis.map(l=>`<div class="ref neg"><img src="${l.img}" alt=""><button class="x" data-id="${l.id}" aria-label="Remove">×</button></div>`).join('');
+  $('refs').querySelectorAll('.x').forEach(b=>b.onclick=()=>{prevRank=rank;delete fb[b.dataset.id];render('remove');});
+  const shown=ok.filter(s=>s.final>=thr).length;
+  $('stats').innerHTML=`<div><b>${L.length}</b> listings in this snapshot</div><div><b>${rej.length}</b> dropped by the colour check</div><div><b>${shown}</b> above your cut-off</div>`+
+    `<div>Target colour <span class="swatch" style="background:rgb(${M.target.map(Math.round).join(',')})"></span> <span class="mono">rgb(${M.target.map(Math.round).join(', ')})</span></div>`+
+    `<div>CLIP range <span class="mono">${M.lo.toFixed(3)}–${M.hi.toFixed(3)}</span> ${M.pos.length>=4?'(from your references)':'(defaults)'}</div>`;
+  if(msg){const moved=ok.filter(s=>prevRank[s.l.id]!==undefined&&prevRank[s.l.id]!==rank[s.l.id]).length;
+    $('flash').innerHTML=msg==='remove'?`Removed. <b>${moved}</b> listings changed position.`:`${msg==='like'?'Added as a reference':'Counted against similar photos'}. <b>${moved}</b> listings changed position.`;}
+}
+$('wClip').oninput=e=>{wClip=e.target.value/100;$('oClip').textContent=e.target.value+'%';prevRank={};render();};
+$('thr').oninput=e=>{thr=+e.target.value;$('oThr').textContent=thr;render();};
+$('reset').onclick=()=>{for(const k in fb)delete fb[k];prevRank={};$('flash').textContent='';render();};
+document.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{sortBy=b.dataset.sort;document.querySelectorAll('[data-sort]').forEach(x=>x.setAttribute('aria-pressed',x===b));render();});
+$('snap').textContent=`Snapshot of real Vinted listings, ${F.generated_at.replace('T',' ')} UTC · searches: ${F.queries.join(', ')}`;
+render();
+})();
+</script>

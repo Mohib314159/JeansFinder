@@ -1,8 +1,10 @@
 # JeansFinder
 
-A personal tool that monitors Vinted for a specific style of jeans, scores every listing using CLIP image embeddings plus colour analysis, and surfaces the best matches in a mobile-friendly feed that updates in real time.
+**Live demo: https://mohib314159.github.io/JeansFinder/** (a real snapshot; like or dislike listings and the feed re-ranks in your browser)
 
-Runs as two processes: a background scraper pipeline that polls Vinted every 15–25 minutes, and a Flask web UI you open on your phone over the same WiFi.
+A tool I use to find one specific style of jeans on Vinted. It checks new listings automatically, filters out obviously wrong colours first, then compares the remaining photos against examples I like. Likes and dislikes feed back into what it shows me.
+
+Runs as two processes: a background scraper pipeline that polls Vinted every 45–90 minutes (configurable), and a Flask web UI you open on your phone over the same WiFi.
 
 ![scoring](https://img.shields.io/badge/scoring-CLIP_%2B_colour-blue) ![python](https://img.shields.io/badge/python-3.8%2B-green)
 
@@ -10,7 +12,7 @@ Runs as two processes: a background scraper pipeline that polls Vinted every 15�
 
 ## How it works
 
-**1. Scraper (`scraper.py`)** — a custom Vinted API client built with `httpx`. It fetches a session cookie from the Vinted homepage, then queries the internal `/api/v2/catalog/items` JSON endpoint directly — the same endpoint Vinted's own frontend uses. No browser, no HTML parsing, so it's fast and resilient to layout changes. Each query pulls multiple pages across two sort orders (newest + relevance) for coverage, and the cookie auto-refreshes if it expires mid-run.
+**1. Scraper (`scraper.py`)** — opens each saved search in a Playwright browser using a saved Vinted session (`python scraper.py --login` once), and reads the JSON that Vinted's own page loads from `/api/v2/catalog/items` instead of parsing HTML. That makes it resilient to layout changes.
 
 **2. Scorer (`scorer.py`)** — two complementary signals:
 - **Colour pre-filter** — extracts denim pixels from a tight centre crop (ignoring white backgrounds), hard-rejects obvious mismatches (vivid blue, black, brown, beige). Runs first because it's cheap.
@@ -56,6 +58,10 @@ Open the printed `http://<ip>:5000` address on your phone (same WiFi).
 Windows users can double-click `start.bat` to launch both at once.
 
 ---
+
+## Demo site
+
+`docs/` is a static page for GitHub Pages. `python export_demo.py` runs one real scrape and saves listing thumbnails, colour stats and CLIP embeddings to `docs/data/`. The page then re-implements the scoring from `scorer.py` in JavaScript, so likes and dislikes re-rank the feed live without a server.
 
 ## Where this pattern applies
 
