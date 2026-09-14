@@ -115,12 +115,48 @@ def make_og(listings, refs):
     og.save(os.path.join(BASE, "docs", "og.png"), optimize=True)
 
 
+def preflight() -> int:
+    """Check the things that actually go wrong, and say exactly how to fix each one."""
+    from scraper import SESSION_FILE
+    issues = []
+    try:
+        import sentence_transformers  # noqa: F401
+    except ImportError:
+        issues.append("CLIP isn't installed. Run: pip install -r requirements.txt")
+    try:
+        import playwright  # noqa: F401
+    except ImportError:
+        issues.append("Playwright isn't installed. Run: pip install -r requirements.txt")
+    if not os.path.exists(SESSION_FILE):
+        issues.append("No saved Vinted login. Run: python scraper.py --login")
+    refs = [f for f in os.listdir(REFERENCE_DIR)
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+            and not any(x in f.lower() for x in ("dislike", "negative", "label", "tag"))]
+    if len(refs) < 4:
+        issues.append(f"Only {len(refs)} reference photos in reference_images/. "
+                      "Add at least 4 photos of the jeans you want (10 is better).")
+    if issues:
+        print("Not ready yet:")
+        for i in issues:
+            print("  - " + i)
+        return 1
+    print(f"Ready: {len(refs)} reference photos, Vinted session saved, CLIP installed.")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--queries", type=int, default=5, help="how many saved searches to run")
     ap.add_argument("--max", type=int, default=120, help="max listings in the snapshot")
     ap.add_argument("--max-rejects", type=int, default=24, help="colour-rejected listings to keep")
+    ap.add_argument("--check", action="store_true", help="check everything is ready, then stop")
     args = ap.parse_args()
+
+    if args.check:
+        return preflight()
+    problems = preflight()
+    if problems:
+        sys.exit(problems)
 
     os.makedirs(IMG, exist_ok=True)
     model = get_model()

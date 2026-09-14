@@ -62,6 +62,7 @@ aside{position:sticky;top:14px;display:grid;gap:14px}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
 .flash{font-size:13px;color:var(--ink-2);min-height:1.5em}
 .flash b{color:var(--thread)}
+.fixbar{background:color-mix(in srgb,var(--thread) 16%,transparent);border:1px dashed var(--thread);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:14px}
 .coach{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;background:var(--thread-soft);border:1px solid color-mix(in srgb,var(--thread) 40%,transparent);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px}
 .coach b{font-weight:600}
 .x2{border:0;background:transparent;color:var(--ink-2);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
@@ -122,6 +123,19 @@ section.log h2{font-size:20px;margin-bottom:10px}
 @media (max-width:620px){.tl li{grid-template-columns:1fr}}
 @media (max-width:860px){.layout{grid-template-columns:1fr}aside{position:static}.how{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:no-preference){.card{transition:box-shadow .2s,opacity .2s}}
+
+.lede2{font-family:var(--display);font-size:clamp(21px,2.3vw,27px);font-weight:700;line-height:1.1;letter-spacing:-.02em;margin:0 0 6px;max-width:24ch}
+header p{color:var(--ink-2)}
+details.notes{max-width:1240px;margin:8px auto 0;padding:14px 18px 0;border-top:1px solid var(--line)}
+details.notes>summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:18px;list-style:none;display:flex;gap:10px;align-items:center}
+details.notes>summary::-webkit-details-marker{display:none}
+details.notes>summary::before{content:"+";display:inline-grid;place-items:center;width:22px;height:22px;border:1px solid var(--line);border-radius:6px;font:600 15px var(--mono);color:var(--ink-2)}
+details.notes[open]>summary::before{content:"−"}
+.notes-in{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 32px;padding:14px 0 18px;font-size:14px;color:var(--ink-2)}
+.notes-in h3{font-size:15px;color:var(--ink);margin-bottom:6px}
+.notes-in ul{margin:0;padding-left:18px;display:grid;gap:6px}
+.notes-in b{color:var(--ink);font-weight:600}
+@media (max-width:860px){.notes-in{grid-template-columns:1fr}}
 </style>
 
 <div class="stitch" aria-hidden="true"></div>
@@ -129,13 +143,15 @@ section.log h2{font-size:20px;margin-bottom:10px}
   <header>
     <div>
       <h1>JeansFinder</h1>
-      <p>I use this to find one specific style of jeans on Vinted: baggy, dark grey, early-2000s. It checks new listings automatically, throws out obviously wrong colours, then ranks the rest by how much the photos look like examples I like. <b>Try it:</b> like or dislike a few listings and watch the feed re-rank.</p>
+      <p class="lede2">Finds the jeans I want on Vinted — and learns what I mean.</p>
+      <p>Baggy, dark grey, early-2000s. New listings are checked automatically and ranked against photos of what I like. <b>Like or dislike anything below; the feed re-ranks.</b></p>
     </div>
     <div class="hlinks"><a class="btn" href="https://github.com/Mohib314159/JeansFinder">Code on GitHub</a></div>
   </header>
 </div>
 <div class="stitch" aria-hidden="true"></div>
 
+<div class="wrap" id="fixtureBar" hidden><div class="fixbar"><b>Preview with placeholder data.</b> These are generated cards, not Vinted listings — the ranking maths is the real thing, the items aren't. Running <span class="mono">export_demo.py</span> replaces them with a live snapshot.</div></div>
 <div class="wrap layout">
   <aside>
     <div class="box">
@@ -161,7 +177,7 @@ section.log h2{font-size:20px;margin-bottom:10px}
       </div>
       <div class="flash" id="flash" aria-live="polite"></div>
     </div>
-    <div class="coach" id="coach" hidden><div><b>Try it:</b> press <b>Like</b> on two or three you'd actually wear. The feed re-ranks straight away, and the ▲▼ badges show what moved.</div><button class="x2" id="coachX" aria-label="Dismiss">×</button></div>
+    <div class="coach" id="coach" hidden><div><b>Try it:</b> Like two or three you'd actually wear — the feed re-ranks and the badges show what moved.</div><button class="x2" id="coachX" aria-label="Dismiss">×</button></div>
     <div class="grid" id="grid"></div>
     <details class="rejects" id="rejBox">
       <summary id="rejSum">Filtered out before CLIP</summary>
@@ -172,19 +188,29 @@ section.log h2{font-size:20px;margin-bottom:10px}
 </div>
 
 <div class="wrap">
-  <section class="how" aria-label="How it works">
-    <div><h3>Collect</h3><p>A scraper runs my saved Vinted searches every 45 to 90 minutes and pulls new listings with their photos. It skips listings it has already seen and anything outside my size.</p></div>
-    <div><h3>Filter, then rank</h3><p>The colour check removes obvious misses. Everything else goes through CLIP, which turns each photo into a 512-number vector. The score is the average similarity to my 3 closest references, minus a penalty if it looks like something I disliked.</p></div>
-    <div><h3>Learn</h3><p>A like crops the photo to the jeans and adds it as a reference, and score cut-offs recalibrate from the references themselves. On this page all of that runs in your browser on a real snapshot. The real app runs on my PC and I check the feed on my phone.</p></div>
-  </section>
-  <section class="log" aria-labelledby="logH">
-    <h2 id="logH">Build log</h2>
-    <ol class="tl">
-      <li><span class="when">Jun 2026</span><span class="st done">shipped</span><div><b>Built it for myself.</b> Scraper, colour filter, CLIP ranking, like/dislike learning, and a phone-friendly feed that updates live while the scraper runs.</div></li>
-      <li><span class="when">Sep 2026</span><span class="st done">shipped</span><div><b>This public demo.</b> The ranking re-implemented in the browser on a real snapshot, so anyone can try the feedback loop without a server. Faces in listing photos are blurred.</div></li>
-      <li><span class="when">next</span><span class="st next">next</span><div><b>Drop the browser from the scraper.</b> Call Vinted's catalogue endpoint directly instead of driving Chrome: faster and lighter.</div></li>
-    </ol>
-  </section>
+  <details class="notes">
+    <summary>How it works, and what's next</summary>
+    <div class="notes-in">
+      <div>
+        <h3>How it works</h3>
+        <ul>
+          <li><b>Collect.</b> A scraper runs my saved Vinted searches every 45–90 minutes and pulls new listings, skipping anything already seen or outside my size.</li>
+          <li><b>Filter, then rank.</b> A cheap colour check drops obvious misses before the slow model runs. What's left goes through CLIP: each photo becomes 512 numbers, and the score is the average similarity to my three closest references, minus a penalty for looking like something I disliked.</li>
+          <li><b>Learn.</b> A like crops the photo to the jeans and adds it as a reference; score ranges recalibrate from the references themselves.</li>
+          <li><b>Here vs there.</b> On this page all of that runs in your browser on a saved snapshot. The real app runs on my PC and I check the feed on my phone.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Build log</h3>
+        <ol class="tl">
+          <li><span class="when">Jun 2026</span><div><b>Built it for myself.</b> Scraper, colour filter, CLIP ranking, like/dislike learning, phone-friendly feed.</div></li>
+          <li><span class="when">Sep 2026</span><div><b>This demo.</b> Ranking re-implemented in the browser on a real snapshot; faces in listing photos blurred before publishing.</div></li>
+          <li><span class="when">next</span><div><b>Drop the browser from the scraper</b> — call the catalogue endpoint directly instead of driving Chrome.</div></li>
+        </ol>
+      </div>
+    </div>
+  </details>
+
   <footer><span id="snap">Snapshot</span><span>Built by Mohib Murtaza · <a href="https://www.linkedin.com/in/mohib-ullah-murtaza-4ba2a1389">LinkedIn</a> · <a href="https://github.com/Mohib314159/JeansFinder">GitHub</a></span></footer>
 </div>
 
@@ -293,6 +319,7 @@ if(!seen) $('coach').hidden=false;
 const hideCoach=()=>{$('coach').hidden=true; try{localStorage.setItem('jf-coach','1');}catch(e){}};
 $('coachX').onclick=hideCoach;
 $('grid').addEventListener('click',e=>{if(e.target.closest('button[data-id]')) hideCoach();});
+if(F.generated_at==='FIXTURE'){$('fixtureBar').hidden=false;}
 $('snap').textContent=`Snapshot of real Vinted listings, ${F.generated_at.replace('T',' ')} UTC · searches: ${F.queries.join(', ')}`;
 render();
 })();
