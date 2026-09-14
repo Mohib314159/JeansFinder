@@ -36,19 +36,19 @@ h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.015em;text-wrap:ba
 :focus-visible{outline:2px solid var(--thread);outline-offset:2px}
 .mono{font-family:var(--mono)}
 /* stitch line: the one ornament — denim topstitching */
-.stitch{height:0;border-top:2px dashed var(--thread);opacity:.8}
+.stitch{height:0;border-top:1px dashed var(--thread);opacity:.45}
 header{padding-block:26px 18px;display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end;justify-content:space-between}
-header h1{font-size:40px;font-weight:700;line-height:1}
-header p{margin:8px 0 0;max-width:64ch;font-size:16px}
+header h1{font-size:27px;font-weight:700;line-height:1;letter-spacing:-.025em}
+header p{margin:8px 0 0;max-width:62ch;font-size:14.5px;line-height:1.55}
 .hlinks{display:flex;gap:8px;flex-wrap:wrap}
-.btn{font:500 13px var(--body);padding:8px 14px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);background:transparent;text-decoration:none;cursor:pointer}
+.btn{font:500 13px var(--body);padding:9px 15px;border-radius:7px;border:1px solid var(--ink);color:var(--ink);background:transparent;text-decoration:none;cursor:pointer}
 .btn:hover{background:var(--ink);color:var(--ground)}
 .layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start;padding-block:18px 40px}
 aside{position:sticky;top:14px;display:grid;gap:14px}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
 .box h2{font-size:16px;font-weight:700;margin-bottom:2px}
 .box .hint{font-size:13px;color:var(--ink-2);margin:0 0 10px}
-.refs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.refs{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
 .ref{position:relative;aspect-ratio:3/4;border-radius:6px;overflow:hidden;background:var(--sunk);border:2px solid transparent}
 .ref img{width:100%;height:100%;object-fit:cover;display:block}
 .ref.pos.fb{border-color:var(--like)} .ref.neg{border-color:var(--dislike)}
@@ -63,16 +63,25 @@ aside{position:sticky;top:14px;display:grid;gap:14px}
 .swatch{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;border:1px solid var(--line)}
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
 .toolbar .l{display:flex;gap:6px;flex-wrap:wrap}
-.chip{font:500 13px var(--body);padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.chip{font:500 12.5px var(--body);padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--ground)}
 .flash{font-size:13px;color:var(--ink-2);min-height:1.5em}
 .flash b{color:var(--thread)}
-.fixbar{background:color-mix(in srgb,var(--thread) 16%,transparent);border:1px dashed var(--thread);border-radius:10px;padding:10px 12px;margin-top:12px;font-size:14px}
-.coach{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;background:var(--thread-soft);border:1px solid color-mix(in srgb,var(--thread) 40%,transparent);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.fixbar{background:transparent;border:0;border-left:2px solid var(--thread);border-radius:0;
+  padding:2px 0 2px 12px;margin-top:12px;font:400 13px/1.55 var(--body);color:var(--ink-2);max-width:96ch}
+.fixbar b{color:var(--ink);font-weight:600}
+.fixbar summary{cursor:pointer;list-style:none;color:var(--ink-2);max-width:100%}
+.fixbar summary::-webkit-details-marker{display:none}
+.fixbar summary::after{content:" \2014 why";text-decoration:underline dotted;text-underline-offset:3px}
+.fixbar[open] summary::after{content:" \2014 hide"}
+.coach{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;
+  background:transparent;border:0;border-left:2px solid var(--thread);border-radius:0;
+  padding:2px 0 2px 12px;margin-bottom:14px;font-size:13.5px;color:var(--ink-2)}
+.coach b{color:var(--ink)}
 .coach b{font-weight:600}
 .x2{border:0;background:transparent;color:var(--ink-2);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
 .why{font-size:12px;color:var(--ink-2)}
-.why summary{cursor:pointer;list-style:none;color:var(--ink-2);text-decoration:underline dotted;text-underline-offset:3px;width:max-content}
+.why summary{cursor:pointer;list-style:none;color:var(--ink-2);text-decoration:underline dotted;text-underline-offset:3px;max-width:100%;width:max-content}
 .why summary::-webkit-details-marker{display:none}
 .why dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin:6px 0 0}
 .why dt{color:var(--ink-2)} .why dd{margin:0;font-family:var(--mono);color:var(--ink)}
@@ -108,7 +117,8 @@ details.rejects p{color:var(--ink-2);font-size:14px;margin:6px 0 12px;max-width:
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
 .rj{font-size:12px;color:var(--ink-2)}
 .rj img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;display:block;margin-bottom:4px;filter:saturate(.9)}
-.why{display:inline-block;font:600 11px var(--mono);color:var(--dislike);background:color-mix(in srgb,var(--dislike) 12%,transparent);padding:2px 6px;border-radius:5px}
+.rj .why{display:inline-block;font:500 11px var(--mono);color:var(--ink-2);
+  background:var(--sunk);padding:2px 6px;border-radius:4px}
 .how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;padding-block:8px 16px}
 .how h3{font-size:17px;margin-bottom:4px}
 .how p{margin:0;color:var(--ink-2);font-size:14px}
@@ -129,7 +139,8 @@ section.log h2{font-size:20px;margin-bottom:10px}
 @media (max-width:860px){.layout{grid-template-columns:1fr}aside{position:static}.how{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:no-preference){.card{transition:box-shadow .2s,opacity .2s}}
 
-.lede2{font-family:var(--display);font-size:clamp(21px,2.3vw,27px);font-weight:700;line-height:1.1;letter-spacing:-.02em;margin:0 0 6px;max-width:24ch}
+.lede2{font-family:var(--display);font-size:clamp(17px,1.7vw,20px);font-weight:600;line-height:1.25;
+  letter-spacing:-.015em;margin:4px 0 6px;max-width:38ch;color:var(--ink-2)}
 header p{color:var(--ink-2)}
 details.notes{max-width:1240px;margin:8px auto 0;padding:14px 18px 0;border-top:1px solid var(--line)}
 details.notes>summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:18px;list-style:none;display:flex;gap:10px;align-items:center}
@@ -156,7 +167,7 @@ details.notes[open]>summary::before{content:"−"}
 </div>
 <div class="stitch" aria-hidden="true"></div>
 
-<div class="wrap" id="fixtureBar" hidden><div class="fixbar"><b>Preview snapshot — my own photographs, not Vinted listings.</b> The ranking is the real code path: top-3 mean similarity, the 0.35 dislike penalty, percentile calibration, live re-rank on feedback. The similarity vectors here are a colour and texture descriptor rather than CLIP, because CLIP needs a GPU-ish install this page does not have. Running <span class="mono">export_demo.py</span> on your own machine replaces all of it with a live CLIP snapshot.</div></div>
+<div class="wrap" id="fixtureBar" hidden><details class="fixbar"><summary><b>Preview snapshot</b> — my own photographs, not live Vinted listings</summary><p style="margin:8px 0 0">The ranking is the real code path: top-3 mean similarity, the 0.35 dislike penalty, percentile calibration, and a live re-rank when you like or dislike something. What differs is the vectors: these are a colour and texture descriptor rather than CLIP, because CLIP needs an install this page does not have. Running <span class="mono">export_demo.py</span> on your own machine replaces the whole snapshot with a live CLIP one.</p></details></div>
 <div class="wrap layout">
   <aside>
     <div class="box">
