@@ -84,7 +84,15 @@ def colour_score(img: Image.Image):
     px       = extract_jeans_pixels(img)
     mean_rgb = px.mean(axis=0)
 
+    # Euclidean distance in RGB does not know the difference between a hue and a grey level,
+    # so a desaturated dark denim lands within 32 of 'olive' and gets thrown away. Only let a
+    # chromatic category reject something that actually has some chroma; the two achromatic
+    # rules (too_light, pure_black) are about lightness and still apply to anything.
+    ACHROMATIC = {'too_light', 'pure_black'}
+    chroma = float(mean_rgb.max() - mean_rgb.min())
     for reason, (ref, thresh) in HARD_REJECTS.items():
+        if reason not in ACHROMATIC and chroma < 18:
+            continue
         if np.linalg.norm(mean_rgb - ref) < thresh:
             return 0.0, f"reject:{reason}({mean_rgb[0]:.0f},{mean_rgb[1]:.0f},{mean_rgb[2]:.0f})"
 

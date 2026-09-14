@@ -244,7 +244,17 @@ const fb={};              // id -> 1 like / -1 dislike
 let wClip=.6, thr=45, sortBy='score', prevRank={};
 
 // --- same rules as scorer.py ---
-function hardReject(rgb){for(const [k,[ref,t]] of REJ) if(dist(rgb,ref)<t) return k; return null;}
+const ACHROMATIC=new Set(['too_light','pure_black']);
+function hardReject(rgb){
+  // RGB distance cannot tell a hue from a grey level, so a desaturated dark denim sits
+  // within 32 of 'olive'. A chromatic rule only applies to something with some chroma.
+  const chroma=Math.max(...rgb)-Math.min(...rgb);
+  for(const [k,[ref,t]] of REJ){
+    if(!ACHROMATIC.has(k) && chroma<18) continue;
+    if(dist(rgb,ref)<t) return k;
+  }
+  return null;
+}
 function model(){
   const pos=F.refs.filter(r=>!r.neg).map(r=>({e:r.e,rgb:r.median_rgb,img:r.img}));
   const neg=F.refs.filter(r=>r.neg).map(r=>r.e);
